@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>O'qituvchilar davomati</title>
+<link rel="icon" type="image/png" href="/static/icon.png">
+<link rel="apple-touch-icon" href="/static/icon.png">
+<meta name="theme-color" content="#2a2850">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -208,11 +211,93 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
 .live-row b{display:block;font-size:14px}
 .live-row small{color:#a5a2d6;font-size:12px}
 .live-row time{margin-left:auto;font-weight:800;color:#7ff0c6;font-variant-numeric:tabular-nums}
+
+/* ---------- kompyuter versiyasi ---------- */
+.login{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(1200px 600px at 20% 0%,#4b478a33,transparent),var(--bg)}
+.login-card{width:min(100%,420px);border-radius:34px;background:var(--surface);box-shadow:var(--sh-out);padding:34px 28px;text-align:center}
+.login-card h1{margin:16px 0 4px;font-size:26px}
+.login-card p{color:var(--muted);margin:0 0 22px;font-size:14px;line-height:1.5}
+.login-card .form{text-align:left}
+.desk-only{display:none!important}
+body.desk .desk-only{display:inline-flex!important}
+body.desk .app{max-width:1180px;padding-bottom:40px}
+body.desk .ahero{padding:26px 40px 70px;border-radius:0 0 0 0}
+body.desk .ahero h2{font-size:28px}
+body.desk .tabs{margin:20px -40px 0;padding:4px 40px 6px;flex-wrap:wrap;overflow:visible}
+body.desk .tab{cursor:pointer}
+body.desk .content{padding:4px 40px 0}
+body.desk .stats4{grid-template-columns:repeat(4,1fr)}
+body.desk .stats4 .st[style*="grid-column"]{grid-column:span 2!important}
+body.desk .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
+body.desk .box.form,body.desk #p-set .box{max-width:720px}
+body.desk #p-stats .box.form{max-width:none}
+body.desk .sheet-in{max-width:760px}
+body.desk .map{height:320px}
+body.desk .nav{display:none!important}
+.dbtn{height:40px;padding:0 14px;border-radius:13px;background:rgba(255,255,255,.08);color:#d8d5ff;font-weight:800;font-size:13.5px;align-items:center;gap:8px;box-shadow:inset 2px 2px 5px rgba(0,0,0,.25)}
+.ahero .tools{position:absolute;right:40px;top:26px;display:flex;gap:10px}
+
+/* ---------- ekran (kiosk) rejimi ---------- */
+.kiosk{position:fixed;inset:0;z-index:120;display:none;background:radial-gradient(900px 600px at 15% 10%,#4b478a,transparent),linear-gradient(160deg,#35326a,#1d1b3d);color:#fff;overflow:hidden}
+.kiosk.show{display:grid;grid-template-columns:minmax(380px,46%) 1fr;gap:3vw;padding:3.2vw}
+.k-left{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-width:0}
+.k-org{font-size:clamp(22px,2.4vw,42px);font-weight:800;line-height:1.15}
+.k-sub{color:#b9b5ea;font-weight:700;font-size:clamp(14px,1.3vw,22px);margin-top:6px}
+.k-qr{margin:2.6vw 0 2vw;padding:clamp(14px,1.6vw,26px);border-radius:clamp(24px,2.4vw,40px);background:#fff;box-shadow:0 0 0 10px rgba(255,255,255,.06),0 30px 60px rgba(0,0,0,.35)}
+.k-qr img,.k-qr canvas{display:block;width:min(34vw,62vh)!important;height:auto!important}
+.k-hint{font-size:clamp(16px,1.6vw,28px);font-weight:800}
+.k-hint small{display:block;color:#a5a2d6;font-size:.6em;font-weight:700;margin-top:6px}
+.k-right{display:flex;flex-direction:column;min-width:0;min-height:0}
+.k-top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.k-clock{font-size:clamp(46px,6vw,110px);font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:2px}
+.k-date{color:#b9b5ea;font-weight:700;font-size:clamp(14px,1.3vw,22px);margin-top:8px}
+.k-stats{display:flex;gap:14px}
+.k-stat{border-radius:22px;padding:14px 20px;background:rgba(255,255,255,.07);box-shadow:inset 2px 2px 6px rgba(0,0,0,.25);text-align:center;min-width:110px}
+.k-stat b{display:block;font-size:clamp(26px,2.6vw,46px);font-weight:800}
+.k-stat small{color:#b9b5ea;font-weight:700;font-size:13px}
+.k-panel{margin-top:2.4vw;border-radius:30px;background:rgba(255,255,255,.05);box-shadow:inset 2px 2px 8px rgba(0,0,0,.25);padding:20px 22px;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.k-panel h3{margin:0 0 10px;font-size:clamp(15px,1.3vw,22px);color:#cfcbff;display:flex;justify-content:space-between}
+.k-list{overflow:hidden;flex:1}
+.k-row{display:flex;align-items:center;gap:14px;padding:11px 4px;border-bottom:1px solid rgba(255,255,255,.07);animation:fade .4s ease}
+.k-row:last-child{border-bottom:0}
+.k-row .av{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;font-weight:800;flex:0 0 auto}
+.k-row b{display:block;font-size:clamp(15px,1.25vw,21px)}
+.k-row small{color:#a5a2d6;font-size:clamp(12px,.95vw,16px)}
+.k-row time{margin-left:auto;font-weight:800;font-size:clamp(15px,1.2vw,20px);font-variant-numeric:tabular-nums;color:#7ff0c6}
+.k-ev-in{color:#7ff0c6} .k-ev-out{color:#ffb3c3}
+.k-exit{position:absolute;right:16px;bottom:14px;opacity:.25;color:#fff;font-weight:700;font-size:13px;padding:8px 12px;border-radius:10px}
+.k-exit:hover{opacity:1;background:rgba(255,255,255,.1)}
+.k-flash{position:absolute;inset:0;display:none;place-items:center;background:rgba(29,27,61,.75);backdrop-filter:blur(6px);z-index:5}
+.k-flash.show{display:grid;animation:fade .3s ease}
+.k-flash div{text-align:center;font-size:clamp(28px,3vw,54px);font-weight:800}
+.k-flash small{display:block;font-size:.5em;color:#cfcbff;margin-top:10px}
+@media (max-width:900px){.kiosk.show{grid-template-columns:1fr;overflow:auto}.k-qr img,.k-qr canvas{width:min(70vw,360px)!important}}
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <div class="loading" id="loading">Yuklanmoqda…</div>
+
+  <!-- ===================== KOMPYUTER: KIRISH ===================== -->
+  <section id="login" class="login hidden">
+    <div class="login-card">
+      <div class="big-av" style="background:linear-gradient(145deg,#3d3a78,#24224a);margin-top:0">💻</div>
+      <h1>Davomat — kompyuter</h1>
+      <p id="loginTxt">Admin sifatida kiring. Kirish kodi Telegram botga yuboriladi.</p>
+      <div class="form" id="loginStep1">
+        <label class="lb">Telegram username yoki ID</label>
+        <input class="inp" id="loginId" placeholder="@username yoki 123456789" autocomplete="username">
+        <button class="btn" id="loginReq">Kod olish</button>
+      </div>
+      <div class="form hidden" id="loginStep2">
+        <label class="lb">Telegram'ga kelgan 6 xonali kod</label>
+        <input class="inp" id="loginCode" inputmode="numeric" maxlength="6" placeholder="••••••" style="letter-spacing:8px;text-align:center;font-size:22px" autocomplete="one-time-code">
+        <button class="btn" id="loginVer">Kirish</button>
+        <button class="btn light" id="loginBack">Orqaga</button>
+      </div>
+      <p style="margin:18px 0 0;font-size:12.5px">ID ni bilish uchun botga <b>/id</b> yuboring. Kompyuterga faqat adminlar kira oladi.</p>
+    </div>
+  </section>
 
   <!-- ===================== O'QITUVCHI ===================== -->
   <section id="home" class="hidden">
@@ -247,6 +332,10 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
     <div class="ahero">
       <h2><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#cfc9ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V7z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Admin panel</h2>
       <p id="adminSub">O'qituvchilar davomati</p>
+      <div class="tools desk-only" style="display:none">
+        <button class="dbtn desk-only" id="openKiosk">📺 Ekran rejimi</button>
+        <button class="dbtn desk-only" id="logoutBtn">↪ Chiqish</button>
+      </div>
       <div class="tabs" id="tabs">
         <button class="tab act" data-p="stats">📊 Statistika</button>
         <button class="tab" data-p="jur">📋 Jurnal</button>
@@ -357,6 +446,11 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
         </div>
         <div class="sec-h"><span>👑 Adminlar</span></div>
         <div class="list" id="adminList"></div>
+        <div class="sec-h"><span>💻 Kompyuter versiyasi</span></div>
+        <div class="box form">
+          <p class="hint">Kompyuterda brauzer orqali oching: <b id="deskUrl"></b> — Telegram username yoki ID bilan kiriladi, kod botga keladi. Avtomatik ochilishi uchun GitHub'dagi <b>kompyuter/ornatish.bat</b> faylini ishga tushiring.</p>
+          <button class="btn light" id="logoutAll">🔐 Barcha kompyuterlardan chiqish</button>
+        </div>
       </div>
     </div>
   </section>
@@ -429,6 +523,28 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
   <input class="inp hidden" id="mInput" style="margin-bottom:4px">
   <div class="mrow" id="mBtns"></div>
 </div></div>
+<!-- ===================== EKRAN (KIOSK) ===================== -->
+<div class="kiosk" id="kiosk">
+  <div class="k-left">
+    <div class="k-org" id="kOrg">Texnikum</div>
+    <div class="k-sub">O'qituvchilar davomati</div>
+    <div class="k-qr" id="kQr"></div>
+    <div class="k-hint">📲 Darsga kirishda va chiqishda skanerlang<small id="kBot">Telegram → bot → markaziy tugma</small></div>
+  </div>
+  <div class="k-right">
+    <div class="k-top">
+      <div><div class="k-clock" id="kClock">00:00</div><div class="k-date" id="kDate"></div></div>
+      <div class="k-stats">
+        <div class="k-stat"><b id="kNow" style="color:#7ff0c6">0</b><small>hozir darsda</small></div>
+        <div class="k-stat"><b id="kToday">0</b><small>bugungi dars</small></div>
+      </div>
+    </div>
+    <div class="k-panel" style="flex:1.3"><h3><span>🟢 Hozir darsda</span><span id="kNowTxt"></span></h3><div class="k-list" id="kNowList"></div></div>
+    <div class="k-panel" style="flex:1;margin-top:1.4vw"><h3><span>🕘 So'nggi harakatlar</span></h3><div class="k-list" id="kEvents"></div></div>
+  </div>
+  <div class="k-flash" id="kFlash"><div id="kFlashTxt"></div></div>
+  <button class="k-exit" id="kExit">✕ Ekran rejimidan chiqish (Esc)</button>
+</div>
 <div class="toast" id="toast"></div>
 <div id="qrHidden" style="position:absolute;left:-9999px;top:0"></div>
 
@@ -437,6 +553,11 @@ const tg = window.Telegram?.WebApp;
 const $ = id => document.getElementById(id);
 const DEMO = new URLSearchParams(location.search).has('demo');
 const URL_CODE = new URLSearchParams(location.search).get('code');
+const QS = new URLSearchParams(location.search);
+// Telegram'dan tashqarida ochilsa — kompyuter versiyasi
+const DESK = QS.has('desk') || (!DEMO && !window.Telegram?.WebApp?.initData);
+const store = { get(k){ try { return localStorage.getItem(k); } catch(e) { return null; } }, set(k,v){ try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k,v); } catch(e) {} } };
+let TOKEN = store.get('dv_token');
 let ME = null, GROUPS = [], liveT = null, curTeacher = null, tAdminOn = false, SET = null, pendingCode = null, pendingLoc = null;
 
 if (tg) { tg.ready(); tg.expand(); try{ tg.setHeaderColor('#3a3770'); tg.setBackgroundColor('#e4e3f1'); }catch(e){} }
@@ -445,12 +566,13 @@ const haptic = t => { try{ t==='ok'||t==='error' ? tg.HapticFeedback.notificatio
 /* ---------------- API ---------------- */
 async function api(path, body) {
   if (DEMO) return demoApi(path, body);
-  const r = await fetch(path, {
-    method: body ? 'POST' : 'GET',
-    headers: {'Content-Type':'application/json', 'X-Init-Data': tg?.initData || ''},
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const headers = {'Content-Type':'application/json'};
+  if (DESK) { if (TOKEN) headers['X-Session'] = TOKEN; } else headers['X-Init-Data'] = tg?.initData || '';
+  let r;
+  try { r = await fetch(path, {method: body ? 'POST' : 'GET', headers, body: body ? JSON.stringify(body) : undefined}); }
+  catch (e) { throw new Error('Internet aloqasi yo\'q yoki server uyg\'onmoqda. Qayta urinib ko\'ring'); }
   const data = await r.json().catch(() => ({error:'Server xatosi'}));
+  if (r.status === 401 && DESK && !path.startsWith('/auth/')) { TOKEN = null; store.set('dv_token', null); showLogin(); }
   if (!r.ok) throw new Error(data.error || 'Xatolik');
   return data;
 }
@@ -805,7 +927,12 @@ async function loadSettings() {
     $('adminList').querySelectorAll('[data-uid]').forEach(b => b.onclick = () => openTeacher(+b.dataset.uid));
   } catch (e) { toast(e.message); }
 }
-$('setRad').oninput = () => $('radTxt').textContent = $('setRad').value + ' m';
+$('deskUrl').textContent = location.origin;
+$('logoutAll').onclick = async () => {
+  if (!await confirmBox('Barcha kompyuterlardan chiqish?', 'Sizning akkauntingiz bilan kirilgan barcha kompyuterlarda qayta kod bilan kirish kerak bo\'ladi.', 'Chiqish')) return;
+  if (await act('/api/admin/logout-all', {}) && DESK) { TOKEN = null; store.set('dv_token', null); showLogin(); }
+};
+$('setRad').oninput =() => $('radTxt').textContent = $('setRad').value + ' m';
 $('setMh').oninput = () => $('mhTxt').textContent = $('setMh').value + ' soat';
 $('setGeo').onclick = () => { haptic(); geoOn = !geoOn; $('setGeo').classList.toggle('on', geoOn); };
 $('useMyLoc').onclick = async () => {
@@ -852,18 +979,105 @@ function show(tab) {
 $('navHome').onclick = () => { haptic(); show('home'); };
 $('navAdmin').onclick = () => { haptic(); show('admin'); };
 
+/* ================= KOMPYUTER: kirish ================= */
+function showLogin() {
+  closeKiosk(true);
+  ['loading','home','admin'].forEach(id => $(id).classList.add('hidden')); $('nav').classList.add('hidden');
+  $('login').classList.remove('hidden'); $('loginStep1').classList.remove('hidden'); $('loginStep2').classList.add('hidden');
+  $('loginId').value = store.get('dv_login') || ''; setTimeout(() => $('loginId').focus(), 100);
+}
+async function loginRequest() {
+  const login = $('loginId').value.trim(); if (!login) return toast('Username yoki ID ni kiriting');
+  $('loginReq').disabled = true;
+  try { await api('/auth/request', {login}); store.set('dv_login', login);
+        $('loginStep1').classList.add('hidden'); $('loginStep2').classList.remove('hidden'); $('loginCode').value = ''; $('loginCode').focus(); toast('📩 Kod Telegram\'ga yuborildi'); }
+  catch (e) { toast('⚠️ ' + e.message); }
+  $('loginReq').disabled = false;
+}
+async function loginVerify() {
+  $('loginVer').disabled = true;
+  try { const r = await api('/auth/verify', {login: $('loginId').value.trim(), code: $('loginCode').value.trim()});
+        TOKEN = r.token; store.set('dv_token', TOKEN); $('login').classList.add('hidden'); $('loading').classList.remove('hidden'); boot(); }
+  catch (e) { toast('⚠️ ' + e.message); }
+  $('loginVer').disabled = false;
+}
+$('loginReq').onclick = loginRequest; $('loginVer').onclick = loginVerify;
+$('loginId').onkeydown = e => { if (e.key === 'Enter') loginRequest(); };
+$('loginCode').onkeydown = e => { if (e.key === 'Enter') loginVerify(); };
+$('loginCode').oninput = () => { if ($('loginCode').value.trim().length === 6) loginVerify(); };
+$('loginBack').onclick = () => { $('loginStep2').classList.add('hidden'); $('loginStep1').classList.remove('hidden'); };
+$('logoutBtn').onclick = async () => {
+  const v = await modal({title:'Chiqish', text:'Bu kompyuterdan chiqasizmi?', buttons:[{label:'Bekor', cls:'light', value:null},{label:'Chiqish', cls:'bad', value:'one'}]});
+  if (!v) return; try { await api('/api/logout', {}); } catch (e) {}
+  TOKEN = null; store.set('dv_token', null); showLogin();
+};
+
+/* ================= EKRAN (kiosk) ================= */
+let kT = null, kClockT = null, kLastEvent = null, kQrText = null, kQr = null;
+const WD_L = ['yakshanba','dushanba','seshanba','chorshanba','payshanba','juma','shanba'];
+async function kioskRefresh() {
+  try {
+    const s = await api('/api/admin/screen');
+    $('kOrg').textContent = s.org;
+    $('kBot').textContent = '@' + (s.qr.split('t.me/')[1] || '').split('?')[0] + ' → markaziy tugma';
+    if (s.qr !== kQrText) { kQrText = s.qr; $('kQr').innerHTML = ''; kQr = new QRCode($('kQr'), {text: s.qr, width: 640, height: 640, colorDark: '#1e1c40', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M}); }
+    $('kNow').textContent = s.now_in.length; $('kToday').textContent = s.today.lessons;
+    $('kNowTxt').textContent = s.now_in.length ? s.now_in.length + ' kishi' : '';
+    $('kNowList').innerHTML = s.now_in.length ? s.now_in.map(l => `<div class="k-row">${av(l.full_name)}<div style="min-width:0"><b>${esc(l.full_name)}</b><small>${esc(lesTitle(l))} · ${l.start.time} dan</small></div><time>${l.duration_text}</time></div>`).join('')
+      : `<div style="color:#a5a2d6;font-size:18px;padding:10px 4px">Hozir hech kim darsda emas</div>`;
+    $('kEvents').innerHTML = s.events.length ? s.events.map(e => `<div class="k-row"><span class="${e.type==='in'?'k-ev-in':'k-ev-out'}" style="font-size:22px">${e.type==='in'?'⬤':'◯'}</span><div style="min-width:0"><b>${esc(e.full_name)}</b><small>${e.type==='in' ? 'darsga kirdi' : 'darsdan chiqdi'}${e.title ? ' · ' + esc(e.title) : ''}</small></div><time class="${e.type==='in'?'k-ev-in':'k-ev-out'}">${e.time}</time></div>`).join('')
+      : `<div style="color:#a5a2d6;font-size:18px;padding:10px 4px">Bugun hali harakat yo'q</div>`;
+    // yangi harakat bo'lsa — ekranda katta xabar
+    const top = s.events[0], key = top ? top.type + top.ts + top.full_name : null;
+    if (kLastEvent && key && key !== kLastEvent) {
+      $('kFlashTxt').innerHTML = `${top.type==='in' ? '✅' : '👋'} ${esc(top.full_name)}<small>${top.type==='in' ? 'darsga kirdi' : 'darsdan chiqdi'} · ${top.time}</small>`;
+      $('kFlash').classList.add('show'); setTimeout(() => $('kFlash').classList.remove('show'), 3500);
+    }
+    kLastEvent = key;
+  } catch (e) { /* tarmoq uzilsa — keyingi urinishda */ }
+}
+function kioskClock() {
+  const d = new Date();
+  $('kClock').textContent = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  $('kDate').textContent = `${d.getDate()} ${MONTHS_L[d.getMonth()]}, ${WD_L[d.getDay()]}`;
+}
+function openKiosk() {
+  $('kiosk').classList.add('show'); kioskClock(); kioskRefresh();
+  clearInterval(kT); clearInterval(kClockT); kT = setInterval(kioskRefresh, 10000); kClockT = setInterval(kioskClock, 1000);
+  try { if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(()=>{}); } catch (e) {}
+}
+function closeKiosk(silent) {
+  $('kiosk').classList.remove('show'); clearInterval(kT); clearInterval(kClockT);
+  if (!silent) try { document.fullscreenElement && document.exitFullscreen(); } catch (e) {}
+}
+$('openKiosk').onclick = openKiosk;
+$('kExit').onclick = () => closeKiosk();
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('kiosk').classList.contains('show')) closeKiosk(); });
+
 /* ---------------- boot ---------------- */
-(async function boot() {
-  if (!DEMO && !tg?.initData) { $('loading').innerHTML = 'Bu ilovani Telegram bot orqali oching 📲'; return; }
+async function boot() {
+  if (DESK) {
+    document.body.classList.add('desk');
+    if (!TOKEN && !DEMO) return showLogin();
+  }
   try { ME = await api('/api/me'); GROUPS = ME.groups || []; }
-  catch (e) { $('loading').textContent = e.message; return; }
+  catch (e) { if (!DESK || TOKEN) $('loading').textContent = e.message; return; }
+  if (DESK) {
+    $('loading').classList.add('hidden');
+    if (!ME.user.is_admin) { $('login').classList.remove('hidden'); $('loginTxt').textContent = 'Kompyuter versiyasi faqat adminlar uchun.'; return; }
+    $('home').classList.add('hidden'); $('admin').classList.remove('hidden');
+    showPane(curPane);
+    if (QS.has('screen')) openKiosk();
+    return;
+  }
   $('loading').classList.add('hidden'); $('nav').classList.remove('hidden');
   if (!ME.user.is_admin) $('navAdmin').classList.add('hidden');
   renderHome();
   show(ME.user.is_admin && !URL_CODE ? 'admin' : 'home');
   if (!ME.user.registered) openReg();
   else if (URL_CODE) handleCode(URL_CODE);
-})();
+}
+boot();
 
 /* ---------------- demo (brauzerda ?demo) ---------------- */
 function demoApi(path, body) {
@@ -888,6 +1102,10 @@ function demoApi(path, body) {
   if (path.startsWith('/api/admin/lessons?')) return {lessons: names.map((n,i)=>({...L(i+1,0,600+i*2900, i%3===0?null:i*900, i%3===0?'open':i===4?'forgot':'done', G[i%3].name, ['Fizika','Kimyo','Tarix','Ona tili','Algebra','Biologiya'][i]), full_name:n}))};
   if (path === '/api/admin/groups') return {groups:G};
   if (path === '/api/admin/settings' || path.startsWith('/api/admin/settings') || path === '/api/admin/qr/rotate') return {lat:40.1268,lon:67.8422,radius:200,required:true,configured:true,org_name:'Arnasoy texnikumi',max_hours:4,qr:'https://t.me/Arnasoy_Texnikum_Davomatbot?start=t_1_abcdef',qr_version:1};
+  if (path === '/api/admin/screen') return {org:'Arnasoy texnikumi', qr:'https://t.me/Arnasoy_Texnikum_Davomatbot?start=t_1_abcdef', geo:true,
+    now_in: names.slice(0,5).map((n,i)=>({...L(i,0,600+i*700,null,'open',G[i%3].name,['Fizika','Kimyo','Tarix','Ona tili','Algebra'][i]), full_name:n})),
+    today:{lessons:57, teachers:31},
+    events: names.map((n,i)=>({type:i%2?'out':'in', ts:nowS-i*300, time:new Date((nowS-i*300)*1000).toTimeString().slice(0,5), full_name:n, title: i%2 ? '1 soat 20 daq' : '101-guruh · Fizika'}))};
   return {ok:true, message:'Demo rejim ✅', full_name:'Demo'};
 }
 </script>
