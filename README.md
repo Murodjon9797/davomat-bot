@@ -8,6 +8,13 @@
 
 Oddiy telefon kamerasi bilan skanerlansa ham ishlaydi: bot ochiladi va «📍 Tasdiqlash» tugmasi joylashuvni tekshiradi.
 
+## Kirish kodi (faqat ruxsat berilganlar)
+Botga yangi odam /start bosganda «admin bergan kirish kodini yuboring» degan javob oladi — kodsiz bot ham, ilova ham ishlamaydi.
+- **🔑 Kodlar** bo'limida kod yaratiladi: o'qituvchi uchun (1 / 5 / 20 / 50 / 200 kishilik, muddati bilan) yoki admin uchun.
+- «📩 Botga yuborish» — taklif xabari (havola + kod) botga keladi, uni o'qituvchiga uzatasiz. Havolani bosgan odam avtomatik ro'yxatdan o'tadi.
+- Kodsiz /start bosganlar «Kod kutayotganlar» ro'yxatida chiqadi — ✅ bilan ruxsat berish yoki ✕ bilan rad etish mumkin.
+- **Bosh admin** (botga birinchi kirgan odam yoki `ADMIN_IDS`) yagona bo'lib admin qo'sha/olib tashlay oladi. Boshqa adminlar faqat o'qituvchi kodlarini yaratadi.
+
 ## Admin panel (ilovadagi 🛡 tugma)
 - **Statistika** — hozir darsdagilar (jonli), bugungi darslar va soatlar, 7 kunlik grafik, oylik reyting, bugun kelmaganlar, Excel hisobot (umumiy + batafsil).
 - **Jurnal** — sana, o'qituvchi, guruh, holat bo'yicha filtr; darsni hozir yopish, chiqish vaqtini tuzatish, o'chirish.

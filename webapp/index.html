@@ -279,11 +279,36 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
 .k-flash div{text-align:center;font-size:clamp(28px,3vw,54px);font-weight:800}
 .k-flash small{display:block;font-size:.5em;color:#cfcbff;margin-top:10px}
 @media (max-width:900px){.kiosk.show{grid-template-columns:1fr;overflow:auto}.k-qr img,.k-qr canvas{width:min(70vw,360px)!important}}
+.join{min-height:100vh;display:grid;place-items:center;padding:24px}
+.join-card{width:min(100%,420px);text-align:center}
+.join-card h2{margin:16px 0 6px;font-size:24px}
+.join-card p{color:var(--muted);font-size:14px;line-height:1.5;margin:0 0 22px}
+.code-inp{letter-spacing:6px;text-align:center;font-size:22px!important;text-transform:uppercase}
+.inv-code{font-family:ui-monospace,Consolas,monospace;font-size:20px;font-weight:800;letter-spacing:3px;color:var(--navy2)}
+.big-code{font-family:ui-monospace,Consolas,monospace;font-size:30px;font-weight:800;letter-spacing:5px;color:var(--navy2);padding:16px;border-radius:18px;box-shadow:var(--sh-in);margin:4px 0 6px;user-select:all}
+.tag.owner{background:#ffd7a8;color:#8a4b00}
+.tag.wait{background:#ffe1e7;color:#b3264a}
+.tag.off{background:#e7e6f0;color:#8c89ad}
+.row-i.inv-off{opacity:.55}
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <div class="loading" id="loading">Yuklanmoqda…</div>
+
+  <!-- ===================== KIRISH KODI ===================== -->
+  <section id="join" class="join hidden">
+    <div class="join-card">
+      <div class="big-av" style="background:linear-gradient(145deg,#3d3a78,#24224a);margin-top:0">🔒</div>
+      <h2>Kirish kodi kerak</h2>
+      <p id="joinTxt">Bu ilova faqat texnikum o'qituvchilari uchun. Admin bergan kirish kodini kiriting.</p>
+      <div class="form">
+        <input class="inp code-inp" id="joinCode" maxlength="12" placeholder="KOD" autocomplete="off" autocapitalize="characters">
+        <button class="btn" id="joinBtn">Kirish</button>
+      </div>
+      <p style="margin-top:18px;font-size:12.5px">Kod yo'qmi? O'quv bo'limi yoki adminga murojaat qiling — ular sizga kod yoki havola beradi.</p>
+    </div>
+  </section>
 
   <!-- ===================== O'QITUVCHI ===================== -->
   <section id="home" class="hidden">
@@ -331,6 +356,7 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
         <button class="tab" data-p="tch">👨‍🏫 O'qituvchilar</button>
         <button class="tab" data-p="grp">🗂 Guruhlar</button>
         <button class="tab" data-p="msg">📢 Xabar</button>
+        <button class="tab" data-p="inv">🔑 Kodlar</button>
         <button class="tab" data-p="set">⚙️ Sozlamalar</button>
       </div>
     </div>
@@ -390,6 +416,30 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
       </div>
 
       <!-- XABAR -->
+      <div class="pane hidden" id="p-inv">
+        <div id="pendWrap">
+          <div class="sec-h" style="margin-top:4px"><span>⏳ Kod kutayotganlar</span><span id="pendCount"></span></div>
+          <div class="list" id="pendList"></div>
+        </div>
+        <div class="sec-h"><span>➕ Yangi kirish kodi</span></div>
+        <div class="box form">
+          <label class="lb">Kim uchun</label>
+          <select class="inp" id="invRole"><option value="teacher">👨‍🏫 O'qituvchi</option><option value="admin">👑 Admin (faqat bosh admin)</option></select>
+          <div class="row2">
+            <div class="form"><label class="lb">Necha kishi</label>
+              <select class="inp" id="invUses"><option value="1">1 kishi (shaxsiy)</option><option value="5">5 kishi</option><option value="20">20 kishi</option><option value="50">50 kishi</option><option value="200">200 kishi</option></select></div>
+            <div class="form"><label class="lb">Muddati</label>
+              <select class="inp" id="invDays"><option value="1">1 kun</option><option value="7" selected>7 kun</option><option value="30">30 kun</option><option value="0">Muddatsiz</option></select></div>
+          </div>
+          <label class="lb">Izoh (ixtiyoriy)</label>
+          <input class="inp" id="invNote" maxlength="60" placeholder="Masalan: Aliyev Vali yoki Matematika kafedrasi">
+          <button class="btn" id="invCreate">🔑 Kod yaratish</button>
+          <p class="hint">Kodni bot orqali havola bilan yuborasiz — o'qituvchi havolani bossa, avtomatik ro'yxatdan o'tadi. Kodsiz hech kim botdan foydalana olmaydi.</p>
+        </div>
+        <div class="sec-h"><span>Kodlar</span><span id="invCount"></span></div>
+        <div class="list" id="invList"></div>
+      </div>
+
       <div class="pane hidden" id="p-msg">
         <div class="box form">
           <label class="lb">Kimga</label>
@@ -480,7 +530,9 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
   <div class="box form" style="margin-top:22px">
     <label class="lb">Familiya, ism</label>
     <input class="inp" id="tEditName" maxlength="80">
-    <div class="switch"><span>👑 Admin huquqi</span><button class="tg" id="tAdmin"></button></div>
+    <div class="switch" id="tApprRow"><span>✅ Botdan foydalanish ruxsati</span><button class="tg" id="tAppr"></button></div>
+    <div class="switch" id="tAdminRow"><span>👑 Admin huquqi</span><button class="tg" id="tAdmin"></button></div>
+    <p class="hint hidden" id="tOwnerHint">Bu bosh admin — uning huquqlarini o'zgartirib bo'lmaydi.</p>
     <button class="btn" id="tSave">Saqlash</button>
   </div>
   <div class="sec-h"><span>Darslar tarixi</span></div>
@@ -503,7 +555,7 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
 
 <div class="modal" id="modal"><div class="mbox">
   <div class="bigi" id="mIcon"></div>
-  <h3 id="mTitle"></h3><p id="mText"></p>
+  <h3 id="mTitle"></h3><div class="big-code hidden" id="mCode"></div><p id="mText"></p>
   <input class="inp hidden" id="mInput" style="margin-bottom:4px">
   <div class="mrow" id="mBtns"></div>
 </div></div>
@@ -593,10 +645,11 @@ function lessonRow(l, {who=false, admin=false} = {}) {
 }
 
 /* ---------------- modal ---------------- */
-function modal({icon='', title='', text='', input=null, buttons=[]}) {
+function modal({icon='', title='', text='', input=null, buttons=[], code=''}) {
   return new Promise(res => {
     $('mIcon').innerHTML = icon; $('mIcon').classList.toggle('hidden', !icon);
     $('mTitle').textContent = title; $('mText').textContent = text; $('mText').classList.toggle('hidden', !text);
+    $('mCode').textContent = code || ''; $('mCode').classList.toggle('hidden', !code);
     const inp = $('mInput'); inp.classList.toggle('hidden', input === null); inp.value = input ?? '';
     inp.type = typeof input === 'object' && input ? input.type : 'text'; if (typeof input === 'object' && input) inp.value = input.value;
     $('mBtns').style.gridTemplateColumns = buttons.length > 1 ? '1fr 1fr' : '1fr';
@@ -743,8 +796,8 @@ document.querySelectorAll('#tabs .tab').forEach(t => t.onclick = () => { haptic(
 function showPane(p) {
   curPane = p;
   document.querySelectorAll('#tabs .tab').forEach(t => { t.classList.toggle('act', t.dataset.p === p); if (t.dataset.p === p) t.scrollIntoView({inline:'center', block:'nearest', behavior:'smooth'}); });
-  ['stats','jur','tch','grp','msg','set'].forEach(x => $('p-'+x).classList.toggle('hidden', x !== p));
-  ({stats: loadStats, jur: loadJournal, tch: loadTeachers, grp: loadGroups, msg: ()=>{}, set: loadSettings})[p]();
+  ['stats','jur','tch','grp','inv','msg','set'].forEach(x => $('p-'+x).classList.toggle('hidden', x !== p));
+  ({stats: loadStats, jur: loadJournal, tch: loadTeachers, grp: loadGroups, inv: loadInvites, msg: ()=>{}, set: loadSettings})[p]();
 }
 let TEACHERS = [];
 async function refreshTeachers() { TEACHERS = (await api('/api/admin/teachers')).teachers; return TEACHERS; }
@@ -761,6 +814,7 @@ async function loadStats() {
                    ['📚', s.today.lessons, 'bugungi dars', '#ff7a59'], ['⏱', s.today.hours + ' s', 'bugun jami', '#5b8cff']];
     $('stTiles').innerHTML = tiles.map(t => `<div class="st"><span class="si" style="font-size:20px">${t[0]}</span><div><b style="color:${t[3]}">${t[1]}</b><small>${t[2]}</small></div></div>`).join('') +
       (s.month_forgot ? `<div class="st" style="grid-column:1/-1"><span class="si">🟠</span><div><b style="font-size:16px">${s.month_forgot} ta dars</b><small>bu oy chiqish belgilanmagan</small></div></div>` : '') +
+      (s.pending ? `<button class="st" style="grid-column:1/-1;text-align:left" onclick="showPane('inv')"><span class="si">⏳</span><div><b style="font-size:16px">${s.pending} kishi kod kutmoqda</b><small>ruxsat berish uchun bosing →</small></div></button>` : '') +
       (s.unregistered ? `<div class="st" style="grid-column:1/-1"><span class="si">⚠️</span><div><b style="font-size:16px">${s.unregistered} kishi</b><small>profilini to'ldirmagan</small></div></div>` : '');
     $('nowCount').textContent = s.now_in.length || '';
     $('nowList').innerHTML = s.now_in.length ? s.now_in.map(l => `<div class="live-row">${av(l.full_name)}<div><b>${esc(l.full_name)}</b><small>${esc(lesTitle(l))} · ${l.start.time} dan</small></div><time>${l.duration_text}</time></div>`).join('')
@@ -821,7 +875,7 @@ async function loadTeachers() {
     $('tCount').textContent = `${r.teachers.length} ta foydalanuvchi`;
     $('tList').innerHTML = r.teachers.length ? r.teachers.map(t => `
       <button class="row-i" data-uid="${t.id}">${av(t.full_name)}
-        <div class="mid"><b>${esc(t.full_name)}${t.is_admin?'<span class="tag admin">admin</span>':''}${!t.registered?'<span class="tag">yangi</span>':''}${t.in_lesson?'<span class="tag" style="background:#d6fbe9;color:#18805c">darsda</span>':''}</b>
+        <div class="mid"><b>${esc(t.full_name)}${t.is_owner?'<span class="tag owner">bosh admin</span>':t.is_admin?'<span class="tag admin">admin</span>':''}${!t.approved?'<span class="tag wait">kod kutmoqda</span>':!t.registered?'<span class="tag">yangi</span>':''}${t.in_lesson?'<span class="tag" style="background:#d6fbe9;color:#18805c">darsda</span>':''}</b>
         <small>${t.month.lessons} dars${t.month.forgot?` · ${t.month.forgot} ta chiqish yo'q`:''}${t.username?' · @'+esc(t.username):''}</small></div>
         <time>${t.month.hours_text || '—'}</time></button>`).join('')
       : `<div class="empty">Hech kim topilmadi.<br>O'qituvchilar botga /start bosganda shu yerda paydo bo'ladi.</div>`;
@@ -839,15 +893,73 @@ async function openTeacher(uid) {
     $('tSub').textContent = [t.username ? '@'+t.username : null, 'ID: '+t.id, t.registered ? null : 'profil to\'ldirilmagan'].filter(Boolean).join(' · ');
     $('tLes').textContent = t.month.lessons; $('tHrs').textContent = t.month.hours_text || '0'; $('tForgot').textContent = t.month.forgot;
     $('tEditName').value = t.full_name; tAdminOn = t.is_admin; $('tAdmin').classList.toggle('on', tAdminOn);
+    tApprOn = t.approved; $('tAppr').classList.toggle('on', tApprOn);
+    const self = t.id === ME.user.id, owner = ME.user.is_owner;
+    $('tOwnerHint').classList.toggle('hidden', !t.is_owner);
+    $('tApprRow').classList.toggle('hidden', t.is_owner || self || (t.is_admin && !owner));
+    $('tAdminRow').classList.toggle('hidden', t.is_owner || !owner || self);
+    $('tDel').classList.toggle('hidden', t.is_owner || self || (t.is_admin && !owner));
+    if (t.joined_via) $('tSub').textContent += ' · kod: ' + t.joined_via;
     $('tHist').innerHTML = t.history.length ? t.history.map(l => lessonRow({...l, full_name: t.full_name}, {admin:true})).join('') : `<div class="empty">Darslar yo'q</div>`;
     $('tHist').querySelectorAll('[data-lid]').forEach(bt => bt.onclick = () => lessonMenu({...t.history.find(x => x.id == bt.dataset.lid), full_name: t.full_name}));
   } catch (e) { toast(e.message); }
 }
+let tApprOn = true;
 $('tAdmin').onclick = () => { haptic(); tAdminOn = !tAdminOn; $('tAdmin').classList.toggle('on', tAdminOn); };
-$('tSave').onclick = async () => { if (await act('/api/admin/teachers/' + curTeacher, {full_name: $('tEditName').value, is_admin: tAdminOn}, 'Saqlandi ✅')) openTeacher(curTeacher); };
+$('tAppr').onclick = () => { haptic(); tApprOn = !tApprOn; $('tAppr').classList.toggle('on', tApprOn); };
+$('tSave').onclick = async () => {
+  const b = {full_name: $('tEditName').value};
+  if (!$('tApprRow').classList.contains('hidden')) b.approved = tApprOn;
+  if (!$('tAdminRow').classList.contains('hidden')) b.is_admin = tAdminOn;
+  if (await act('/api/admin/teachers/' + curTeacher, b, 'Saqlandi ✅')) openTeacher(curTeacher);
+};
 $('tDel').onclick = async () => {
   if (await confirmBox('O\'qituvchini o\'chirish?', 'Uning barcha dars yozuvlari ham o\'chadi.', 'O\'chirish'))
     if (await act(`/api/admin/teachers/${curTeacher}/delete`, {}, 'O\'chirildi')) closeSheet('tSheet');
+};
+
+/* ---- kirish kodlari ---- */
+async function loadInvites() {
+  try {
+    const r = await api('/api/admin/invites');
+    $('invRole').querySelector('[value=admin]').disabled = !r.is_owner;
+    $('pendWrap').classList.toggle('hidden', !r.pending.length);
+    $('pendCount').textContent = r.pending.length || '';
+    $('pendList').innerHTML = r.pending.map(u => `
+      <div class="row-i">${av(u.full_name)}<div class="mid"><b>${esc(u.full_name)}</b><small>${u.username ? '@'+esc(u.username)+' · ' : ''}ID: ${u.id} · ${fmtDate(u.since.date)} ${u.since.time}</small></div>
+        <button class="act-b" data-ok="${u.id}" title="Ruxsat berish">${I_OK}</button><button class="act-b" data-no="${u.id}" title="Rad etish">${I_X}</button></div>`).join('');
+    $('pendList').querySelectorAll('[data-ok]').forEach(b => b.onclick = async () => {
+      if (await act('/api/admin/teachers/' + b.dataset.ok, {approved: true}, 'Ruxsat berildi ✅')) loadInvites(); });
+    $('pendList').querySelectorAll('[data-no]').forEach(b => b.onclick = async () => {
+      if (await confirmBox('Rad etilsinmi?', "Bu odam ro'yxatdan o'chiriladi. Kod bilan qayta kira oladi.", 'Rad etish'))
+        if (await act(`/api/admin/teachers/${b.dataset.no}/delete`, {}, 'Rad etildi')) loadInvites(); });
+    $('invCount').textContent = r.invites.length ? r.invites.length + ' ta' : '';
+    $('invList').innerHTML = r.invites.length ? r.invites.map(i => `
+      <div class="row-i ${i.active?'':'inv-off'}">
+        <span class="av" style="background:${i.role==='admin'?'linear-gradient(145deg,#ffd27a,#f5a524)':'linear-gradient(145deg,#8a80ff,#5a50e6)'}">${i.role==='admin'?'👑':'🔑'}</span>
+        <div class="mid"><b><span class="inv-code">${i.code}</span>${i.active?'':'<span class="tag off">tugagan</span>'}</b>
+          <small>${i.role==='admin'?'admin':"o'qituvchi"} · ${i.used}/${i.max_uses} ishlatilgan · ${i.expires ? fmtDate(i.expires.date)+' gacha' : 'muddatsiz'}${i.note?' · '+esc(i.note):''}${i.people.length?' · '+i.people.map(esc).join(', '):''}</small></div>
+        ${i.active?`<button class="act-b" data-send="${i.id}" title="Botga yuborish">📩</button>`:''}
+        <button class="act-b" data-del="${i.id}" title="O'chirish">${I_X}</button></div>`).join('')
+      : `<div class="empty">Hali kod yo'q. Yuqorida kod yarating.</div>`;
+    $('invList').querySelectorAll('[data-send]').forEach(b => b.onclick = () => act(`/api/admin/invites/${b.dataset.send}/send`));
+    $('invList').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      if (await confirmBox("Kod o'chirilsinmi?", "Bu kod bilan endi hech kim kira olmaydi. Kirib bo'lganlar qoladi.", "O'chirish"))
+        if (await act(`/api/admin/invites/${b.dataset.del}/delete`, {}, "Kod o'chirildi")) loadInvites(); });
+  } catch (e) { toast(e.message); }
+}
+$('invRole').onchange = () => { const adm = $('invRole').value === 'admin'; $('invUses').disabled = adm; if (adm) $('invUses').value = '1'; };
+$('invCreate').onclick = async () => {
+  $('invCreate').disabled = true;
+  const r = await act('/api/admin/invites', {role: $('invRole').value, uses: +$('invUses').value, days: +$('invDays').value, note: $('invNote').value}, 'Kod yaratildi');
+  $('invCreate').disabled = false;
+  if (!r) return;
+  $('invNote').value = ''; loadInvites();
+  const i = r.invite;
+  const v = await modal({code: i.code, icon: i.role === 'admin' ? '👑' : '🔑', title: i.role === 'admin' ? 'Admin kodi tayyor' : 'Kirish kodi tayyor',
+    text: `${i.max_uses} kishi · ${i.expires ? fmtDate(i.expires.date) + ' gacha' : 'muddatsiz'}${i.note ? '\n' + i.note : ''}`,
+    buttons: [{label: 'Yopish', cls: 'light', value: null}, {label: '📩 Botga yuborish', value: 'send'}]});
+  if (v === 'send') act(`/api/admin/invites/${i.id}/send`);
 };
 
 /* ---- guruhlar ---- */
@@ -904,8 +1016,8 @@ async function loadSettings() {
   try {
     renderSettings(await api('/api/admin/settings'));
     const st = await api('/api/admin/stats');
-    $('adminList').innerHTML = st.admins.map(a => `<button class="row-i" data-uid="${a.id}">${av(a.full_name)}<div class="mid"><b>${esc(a.full_name)}</b><small>${a.username ? '@'+esc(a.username) : 'ID: '+a.id}</small></div><span class="tag admin">admin</span></button>`).join('') +
-      `<div class="empty" style="padding:14px;font-size:13px">Admin qo'shish: «O'qituvchilar» bo'limida odamni ochib, «Admin huquqi»ni yoqing.</div>`;
+    $('adminList').innerHTML = st.admins.map(a => `<button class="row-i" data-uid="${a.id}">${av(a.full_name)}<div class="mid"><b>${esc(a.full_name)}</b><small>${a.username ? '@'+esc(a.username) : 'ID: '+a.id}</small></div><span class="tag ${a.is_owner?'owner':'admin'}">${a.is_owner?'bosh admin':'admin'}</span></button>`).join('') +
+      `<div class="empty" style="padding:14px;font-size:13px">${ME.user.is_owner ? "Admin qo'shish: «🔑 Kodlar» bo'limida «Admin» kodini yarating yoki «O'qituvchilar»dan odamni ochib «Admin huquqi»ni yoqing." : "Admin qo'shish faqat bosh admin uchun."}</div>`;
     $('adminList').querySelectorAll('[data-uid]').forEach(b => b.onclick = () => openTeacher(+b.dataset.uid));
   } catch (e) { toast(e.message); }
 }
@@ -1030,11 +1142,28 @@ $('openKiosk').onclick = openKiosk;
 $('kExit').onclick = () => closeKiosk();
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('kiosk').classList.contains('show')) closeKiosk(); });
 
+/* ---------------- kirish kodi ---------------- */
+async function joinSubmit() {
+  const code = $('joinCode').value.trim(); if (code.length < 6) return toast('Kodni to\'liq kiriting');
+  $('joinBtn').disabled = true;
+  try { const r = await api('/api/join', {code}); haptic('ok'); toast(r.message); $('join').classList.add('hidden'); $('loading').classList.remove('hidden'); await boot(); }
+  catch (e) { haptic('error'); toast('⚠️ ' + e.message); }
+  $('joinBtn').disabled = false;
+}
+$('joinBtn').onclick = joinSubmit;
+$('joinCode').onkeydown = e => { if (e.key === 'Enter') joinSubmit(); };
+
 /* ---------------- boot ---------------- */
 async function boot() {
   if (!DEMO && !tg?.initData) { $('loading').innerHTML = 'Bu ilovani Telegram bot orqali oching 📲'; return; }
   try { ME = await api('/api/me'); GROUPS = ME.groups || []; }
   catch (e) { $('loading').textContent = e.message; return; }
+  if (ME.need_code) {
+    $('loading').classList.add('hidden'); $('join').classList.remove('hidden');
+    $('joinTxt').textContent = `Bu ilova faqat ${ME.org || 'texnikum'} o'qituvchilari uchun. Admin bergan kirish kodini kiriting.`;
+    setTimeout(() => $('joinCode').focus(), 200);
+    return;
+  }
   $('loading').classList.add('hidden'); $('nav').classList.remove('hidden');
   if (!ME.user.is_admin) $('navAdmin').classList.add('hidden'); else $('toAdmin').classList.remove('hidden');
   renderHome();
@@ -1051,7 +1180,8 @@ function demoApi(path, body) {
   const L = (id, n, a, b, st, g, s, extra={}) => ({id, start: T(n,a), end: b!=null ? T(n,b) : null, status: st, group: g, subject: s, duration: a-(b??0), duration_text: durTxt(a-(b??0)), start_dist: 34, end_dist: 41, manual:false, ...extra});
   const G = [{id:1,name:'101-guruh',lessons:12},{id:2,name:'102-guruh',lessons:9},{id:3,name:'201-guruh',lessons:15}];
   const names = ['Aliyev Vali Karimovich','Karimova Aziza','Rahimov Bobur','Toshmatova Nilufar','Yusupov Sardor','Ergasheva Malika'];
-  if (path === '/api/me') return {user:{id:1,full_name:'Karimova Aziza Rustamovna',is_admin:true,registered:true}, org:'Arnasoy texnikumi', geo:{configured:true,required:true,radius:200},
+  if (path === '/api/me' && QS.has('lock')) return {need_code:true, org:'Arnasoy texnikumi', user:{id:5,full_name:'Yangi odam'}};
+  if (path === '/api/me') return {user:{id:1,full_name:'Karimova Aziza Rustamovna',is_admin:true,is_owner:true,registered:true}, org:'Arnasoy texnikumi', geo:{configured:true,required:true,radius:200},
     open: L(5,0,1520,null,'open','101-guruh','Matematika'), last:{group_id:1,subject:'Matematika'}, server_time: nowS, groups: G,
     today:[L(5,0,1520,null,'open','101-guruh','Matematika'), L(4,0,9000,4200,'done','102-guruh','Algebra')],
     history:[L(3,1,30000,25200,'done','201-guruh','Geometriya'), L(2,1,40000,null,'forgot','101-guruh','Matematika'), L(1,2,30000,25000,'done','102-guruh','Algebra')],
@@ -1060,12 +1190,18 @@ function demoApi(path, body) {
     now_in: names.slice(0,4).map((n,i)=>({...L(i,0,600+i*700,null,'open',G[i%3].name,['Fizika','Kimyo','Tarix','Ona tili'][i]), full_name:n})),
     days:[38,52,0,61,55,49,57].map((x,i)=>({date:d(6-i),lessons:x})),
     ranking: names.map((n,i)=>({id:i+2,full_name:n,lessons:40-i*3,forgot:i%3===2?1:0,hours_text:`${52-i*4} soat ${i*7} daq`})),
-    absent_today: names.slice(4).map((n,i)=>({id:i+9,full_name:n})), admins:[{id:1,full_name:'Karimova Aziza Rustamovna',username:'aziza'}]};
+    absent_today: names.slice(4).map((n,i)=>({id:i+9,full_name:n})), admins:[{id:1,full_name:'Karimova Aziza Rustamovna',username:'aziza',is_owner:true}], pending:2};
   if (path.startsWith('/api/admin/teachers?') || path === '/api/admin/teachers') return {teachers: names.map((n,i)=>({id:i+2,full_name:n,username:'user'+i,is_admin:i===0,registered:i!==5,in_lesson:i<3,month:{lessons:40-i*3,forgot:i%3===2?1:0,hours_text:`${52-i*4} soat`}}))};
   if (/^\/api\/admin\/teachers\/\d+$/.test(path) && !body) return {id:2,full_name:names[0],username:'vali',is_admin:false,registered:true,month:{lessons:38,forgot:1,hours_text:'49 soat 20 daq'},
     history:[L(1,0,1800,null,'open','101-guruh','Fizika'), L(2,0,9000,4200,'done','102-guruh','Fizika'), L(3,1,40000,null,'forgot','201-guruh','Fizika'), L(4,1,30000,25200,'done','101-guruh','Fizika')]};
   if (path.startsWith('/api/admin/lessons?')) return {lessons: names.map((n,i)=>({...L(i+1,0,600+i*2900, i%3===0?null:i*900, i%3===0?'open':i===4?'forgot':'done', G[i%3].name, ['Fizika','Kimyo','Tarix','Ona tili','Algebra','Biologiya'][i]), full_name:n}))};
   if (path === '/api/admin/groups') return {groups:G};
+  if (path === '/api/admin/invites' && !body) return {is_owner:true,
+    pending:[{id:77,full_name:'Qodirov Jasur',username:'jasur',since:T(0,900)},{id:78,full_name:'Nazarova Dilnoza',username:null,since:T(0,3600)}],
+    invites:[{id:3,code:'K7M4Q2XP',role:'teacher',max_uses:20,used:7,expires:T(-6,0),note:'Matematika kafedrasi',active:true,people:['Aliyev Vali','Rahimov Bobur']},
+             {id:2,code:'H8RZ3WTN',role:'admin',max_uses:1,used:0,expires:T(-1,0),note:"O'quv bo'limi",active:true,people:[]},
+             {id:1,code:'PB5N9CVE',role:'teacher',max_uses:1,used:1,expires:null,note:'Karimova A.',active:false,people:['Karimova Aziza']}]};
+  if (path === '/api/admin/invites' && body) return {ok:true, invite:{id:9,code:'Q4XZ7MNA',role:body.role,max_uses:body.uses,used:0,expires:T(-7,0),note:body.note,active:true}};
   if (path === '/api/admin/settings' || path.startsWith('/api/admin/settings') || path === '/api/admin/qr/rotate') return {lat:40.1268,lon:67.8422,radius:200,required:true,configured:true,org_name:'Arnasoy texnikumi',max_hours:4,qr:'https://t.me/Arnasoy_Texnikum_Davomatbot?start=t_1_abcdef',qr_version:1};
   if (path === '/api/admin/screen') return {org:'Arnasoy texnikumi', qr:'https://t.me/Arnasoy_Texnikum_Davomatbot?start=t_1_abcdef', geo:true,
     now_in: names.slice(0,5).map((n,i)=>({...L(i,0,600+i*700,null,'open',G[i%3].name,['Fizika','Kimyo','Tarix','Ona tili','Algebra'][i]), full_name:n})),

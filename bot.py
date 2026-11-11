@@ -99,6 +99,17 @@ CREATE TABLE IF NOT EXISTS lessons(
 CREATE INDEX IF NOT EXISTS ix_lessons_user ON lessons(user_id, start_ts);
 CREATE INDEX IF NOT EXISTS ix_lessons_start ON lessons(start_ts);
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS invites(
+    id {serial},
+    code TEXT UNIQUE NOT NULL,
+    role TEXT DEFAULT 'teacher',
+    max_uses INTEGER DEFAULT 1,
+    used INTEGER DEFAULT 0,
+    expires BIGINT,
+    note TEXT,
+    created_by BIGINT,
+    created_at BIGINT
+);
 """
 
 if PG:
@@ -184,6 +195,30 @@ def set_setting(key: str, value) -> None:
     run("INSERT INTO settings(key, value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", key, str(value))
 
 
+def has_column(table: str, col: str) -> bool:
+    if PG:
+        return q1("SELECT 1 FROM information_schema.columns WHERE table_name=? AND column_name=?", table, col) is not None
+    return any(r["name"] == col for r in q(f"PRAGMA table_info({table})"))
+
+
+def migrate():
+    """Eski bazaga yangi ustunlarni qo'shadi. Mavjud foydalanuvchilar kodsiz qoladi."""
+    if not has_column("users", "approved"):
+        run("ALTER TABLE users ADD COLUMN approved INTEGER DEFAULT 0")
+        run("UPDATE users SET approved=1")
+    if not has_column("users", "is_owner"):
+        run("ALTER TABLE users ADD COLUMN is_owner INTEGER DEFAULT 0")
+    if not has_column("users", "joined_via"):
+        run("ALTER TABLE users ADD COLUMN joined_via TEXT")
+    if not q1("SELECT 1 FROM users WHERE is_owner=1"):
+        first = q1("SELECT id FROM users WHERE is_admin=1 ORDER BY created_at LIMIT 1")
+        if first:
+            run("UPDATE users SET is_owner=1 WHERE id=?", first["id"])
+
+
+migrate()
+
+
 def geo_conf() -> dict:
     lat, lon = setting("lat"), setting("lon")
     return {
@@ -197,12 +232,14 @@ def upsert_user(uid: int, full_name: str, username: str | None):
     row = q1("SELECT * FROM users WHERE id=?", uid)
     if row is None:
         has_admin = q1("SELECT 1 FROM users WHERE is_admin=1") is not None
-        is_admin = 1 if (uid in ADMIN_IDS or (not ADMIN_IDS and not has_admin)) else 0
-        run("INSERT INTO users(id, full_name, username, is_admin, created_at) VALUES(?,?,?,?,?)",
-            uid, full_name, username, is_admin, int(time.time()))
+        # birinchi foydalanuvchi (yoki ADMIN_IDS) — bosh admin; qolganlar kod bilan kiradi
+        boss = uid in ADMIN_IDS or (not ADMIN_IDS and not has_admin)
+        owner = boss and q1("SELECT 1 FROM users WHERE is_owner=1") is None
+        run("INSERT INTO users(id, full_name, username, is_admin, approved, is_owner, created_at) VALUES(?,?,?,?,?,?,?)",
+            uid, full_name, username, int(boss), int(boss), int(owner), int(time.time()))
     else:
-        if uid in ADMIN_IDS and not row["is_admin"]:
-            run("UPDATE users SET is_admin=1 WHERE id=?", uid)
+        if uid in ADMIN_IDS and not (row["is_admin"] and row["approved"] and row["is_owner"]):
+            run("UPDATE users SET is_admin=1, approved=1, is_owner=1 WHERE id=?", uid)
         if not row["registered"]:
             run("UPDATE users SET full_name=? WHERE id=?", full_name, uid)
         run("UPDATE users SET username=? WHERE id=?", username, uid)
@@ -258,6 +295,71 @@ def dur_text(sec: int | None) -> str:
     m = max(0, sec) // 60
     h, m = divmod(m, 60)
     return f"{h} soat {m} daq" if h else f"{m} daq"
+
+
+# ---------------------------------------------------------------- kirish kodlari
+CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"   # chalkash belgilar (0/O, 1/I) yo'q
+
+
+def norm_code(raw: str) -> str:
+    raw = unquote(str(raw or "")).strip()
+    if "inv_" in raw:
+        raw = raw.split("inv_", 1)[1]
+    return "".join(ch for ch in raw.upper() if ch.isalnum())[:16]
+
+
+def invite_link(code: str) -> str:
+    return f"https://t.me/{BOT_USERNAME}?start=inv_{code}"
+
+
+def invite_dict(r) -> dict:
+    active = r["used"] < r["max_uses"] and (not r["expires"] or r["expires"] > now())
+    return {"id": r["id"], "code": r["code"], "role": r["role"], "max_uses": r["max_uses"], "used": r["used"],
+            "expires": fmt_ts(r["expires"]) if r["expires"] else None, "note": r["note"] or "",
+            "active": active, "link": invite_link(r["code"]), "created": fmt_ts(r["created_at"])}
+
+
+def new_invite(role: str, max_uses: int, days: float, note: str, by: int) -> dict:
+    code = ""
+    for _ in range(10):
+        code = "".join(CODE_ALPHABET[b % len(CODE_ALPHABET)] for b in os.urandom(8))
+        if not q1("SELECT 1 FROM invites WHERE code=?", code):
+            break
+    expires = now() + int(days * 86400) if days else None
+    iid = insert("""INSERT INTO invites(code, role, max_uses, used, expires, note, created_by, created_at)
+                    VALUES(?,?,?,0,?,?,?,?)""", code, role, max_uses, expires, note, by, now())
+    return invite_dict(q1("SELECT * FROM invites WHERE id=?", iid))
+
+
+_bad_tries: dict = {}
+
+
+def redeem(uid: int, raw: str) -> tuple:
+    """Foydalanuvchiga kod bo'yicha kirish ruxsatini beradi. (ok, xabar)"""
+    tries = [t for t in _bad_tries.get(uid, []) if time.time() - t < 600]
+    if len(tries) >= 5:
+        return False, "Juda ko'p noto'g'ri urinish. 10 daqiqadan keyin qayta urining"
+    code = norm_code(raw)
+    r = q1("SELECT * FROM invites WHERE code=?", code) if len(code) >= 6 else None
+    if not r or r["used"] >= r["max_uses"] or (r["expires"] and r["expires"] < now()):
+        tries.append(time.time())
+        _bad_tries[uid] = tries
+        return False, "Kod noto'g'ri yoki muddati o'tgan. Admindan yangi kod so'rang"
+    u = q1("SELECT * FROM users WHERE id=?", uid)
+    if u and u["approved"] and (r["role"] != "admin" or u["is_admin"]):
+        return True, "Siz allaqachon ro'yxatdan o'tgansiz"
+    run("UPDATE invites SET used=used+1 WHERE id=?", r["id"])
+    if r["role"] == "admin":
+        run("UPDATE users SET approved=1, is_admin=1, joined_via=? WHERE id=?", code, uid)
+        return True, "Siz admin sifatida ro'yxatdan o'tdingiz 👑"
+    run("UPDATE users SET approved=1, joined_via=? WHERE id=?", code, uid)
+    return True, "Ro'yxatdan o'tdingiz ✅"
+
+
+NEED_CODE_TEXT = ("🔒 Assalomu alaykum!\n\nBu bot faqat texnikum o'qituvchilari uchun. "
+                  "Kirish uchun admin bergan <b>kirish kodini</b> shu yerga yuboring.\n\n"
+                  "Kod bo'lmasa, botdan foydalana olmaysiz — o'quv bo'limi yoki adminga murojaat qiling.")
+JOINED_TEXT = "\n\nIlovani ochib, familiya va ismingizni kiriting 👇"
 
 
 # ---------------------------------------------------------------- QR va lokatsiya
@@ -407,6 +509,13 @@ def tg_name(u) -> str:
 async def cmd_start(m: Message, command: CommandObject):
     user = upsert_user(m.from_user.id, tg_name(m.from_user), m.from_user.username)
     payload = command.args or ""
+    if payload.startswith("inv_"):
+        ok, msg = redeem(m.from_user.id, payload)
+        if not ok:
+            return await m.answer("⚠️ " + msg + "\n\n" + NEED_CODE_TEXT, parse_mode="HTML")
+        return await m.answer("✅ " + msg + JOINED_TEXT, reply_markup=app_keyboard())
+    if not user["approved"]:
+        return await m.answer(NEED_CODE_TEXT, parse_mode="HTML")
     if payload.startswith("t_"):
         # telefon kamerasi bilan skanerlangan — joylashuvni tekshirish uchun ilovani ochamiz
         if not check_code(payload):
@@ -428,6 +537,12 @@ async def cmd_id(m: Message):
 
 @dp.message(F.text)
 async def any_text(m: Message):
+    user = upsert_user(m.from_user.id, tg_name(m.from_user), m.from_user.username)
+    if not user["approved"]:
+        ok, msg = redeem(m.from_user.id, m.text)
+        if not ok:
+            return await m.answer("⚠️ " + msg + "\n\n" + NEED_CODE_TEXT, parse_mode="HTML")
+        return await m.answer("✅ " + msg + JOINED_TEXT, reply_markup=app_keyboard())
     await m.answer("Davomat uchun ilovani oching 👇", reply_markup=app_keyboard())
 
 
@@ -502,6 +617,8 @@ async def auth_mw(request: web.Request, handler):
         return jerr("Ilovani Telegram ichidan oching", 401)
     name = " ".join(x for x in (tg_user.get("first_name"), tg_user.get("last_name")) if x)
     request["user"] = upsert_user(tg_user["id"], name or str(tg_user["id"]), tg_user.get("username"))
+    if not request["user"]["approved"] and request.path not in ("/api/me", "/api/join"):
+        return web.json_response({"error": "Kirish kodi kerak", "need_code": True}, status=403)
     if request.path.startswith("/api/admin/") and not request["user"]["is_admin"]:
         return jerr("Faqat admin uchun", 403)
     await close_stale()
@@ -528,8 +645,19 @@ def opt_int(v):
 
 
 # ---------- o'qituvchi
+async def api_join(request):
+    b = await body(request)
+    ok, msg = redeem(request["user"]["id"], b.get("code", ""))
+    if not ok:
+        return jerr(msg)
+    return web.json_response({"ok": True, "message": msg})
+
+
 async def api_me(request):
     u = request["user"]
+    if not u["approved"]:
+        return web.json_response({"need_code": True, "org": setting("org_name"),
+                                  "user": {"id": u["id"], "full_name": u["full_name"]}})
     t0 = day_start()
     today = q("SELECT * FROM lessons WHERE user_id=? AND start_ts>=? ORDER BY start_ts DESC", u["id"], t0)
     hist = q("SELECT * FROM lessons WHERE user_id=? AND start_ts<? ORDER BY start_ts DESC LIMIT 30", u["id"], t0)
@@ -540,7 +668,8 @@ async def api_me(request):
     g = geo_conf()
     return web.json_response({
         "user": {"id": u["id"], "full_name": u["full_name"], "username": u["username"],
-                 "is_admin": bool(u["is_admin"]), "registered": bool(u["registered"])},
+                 "is_admin": bool(u["is_admin"]), "is_owner": bool(u["is_owner"]),
+                 "registered": bool(u["registered"])},
         "org": setting("org_name"),
         "geo": {"configured": g["configured"], "required": g["required"], "radius": g["radius"]},
         "open": lesson_dict(ol) if ol else None,
@@ -603,7 +732,7 @@ async def api_scan(request):
 async def api_stats(request):
     t0 = day_start()
     m0 = day_start(datetime.now(TZ).replace(day=1))
-    teachers = q("SELECT * FROM users ORDER BY full_name")
+    teachers = q("SELECT * FROM users WHERE approved=1 ORDER BY full_name")
     now_in = q("SELECT l.*, u.full_name FROM lessons l JOIN users u ON u.id=l.user_id WHERE l.status='open' ORDER BY l.start_ts")
     today = q("SELECT * FROM lessons WHERE start_ts>=?", t0)
     days = []
@@ -635,8 +764,9 @@ async def api_stats(request):
         "days": days,
         "ranking": ranking[:10],
         "absent_today": absent_today[:30],
-        "admins": [{"id": a["id"], "full_name": a["full_name"], "username": a["username"]}
+        "admins": [{"id": a["id"], "full_name": a["full_name"], "username": a["username"], "is_owner": bool(a["is_owner"])}
                    for a in teachers if a["is_admin"]],
+        "pending": q1("SELECT COUNT(*) c FROM users WHERE approved=0")["c"],
     })
 
 
@@ -701,6 +831,7 @@ async def api_teachers(request):
         if qs and qs not in (u["full_name"] or "").lower() and qs not in (u["username"] or "").lower() and qs != str(u["id"]):
             continue
         out.append({"id": u["id"], "full_name": u["full_name"], "username": u["username"], "is_admin": bool(u["is_admin"]),
+                    "is_owner": bool(u["is_owner"]), "approved": bool(u["approved"]),
                     "registered": bool(u["registered"]), "in_lesson": u["id"] in in_lesson,
                     "month": ms.get(u["id"], EMPTY_STATS)})
     return web.json_response({"teachers": out})
@@ -714,6 +845,7 @@ async def api_teacher(request):
     hist = q("SELECT * FROM lessons WHERE user_id=? ORDER BY start_ts DESC LIMIT 60", uid)
     return web.json_response({
         "id": u["id"], "full_name": u["full_name"], "username": u["username"], "is_admin": bool(u["is_admin"]),
+        "is_owner": bool(u["is_owner"]), "approved": bool(u["approved"]), "joined_via": u["joined_via"],
         "registered": bool(u["registered"]), "joined": fmt_ts(u["created_at"]), "month": user_month_stats(uid),
         "history": [lesson_dict(r) for r in hist],
     })
@@ -722,19 +854,35 @@ async def api_teacher(request):
 async def api_teacher_save(request):
     uid = int(request.match_info["uid"])
     b = await body(request)
-    if not q1("SELECT 1 FROM users WHERE id=?", uid):
+    target = q1("SELECT * FROM users WHERE id=?", uid)
+    if not target:
         return jerr("Topilmadi", 404)
+    me = request["user"]
+    if target["is_owner"] and uid != me["id"]:
+        return jerr("Bosh adminni o'zgartirib bo'lmaydi")
+    if target["is_admin"] and uid != me["id"] and not me["is_owner"]:
+        return jerr("Boshqa adminni faqat bosh admin o'zgartira oladi")
+    if "approved" in b:
+        run("UPDATE users SET approved=? WHERE id=?", 1 if b["approved"] else 0, uid)
+        if b["approved"] and not target["approved"]:
+            try:
+                await bot.send_message(uid, "✅ Admin sizga botdan foydalanishga ruxsat berdi." + JOINED_TEXT,
+                                       reply_markup=app_keyboard())
+            except Exception:
+                pass
     if "full_name" in b:
         name = clean(b["full_name"])
         if len(name) < 3:
             return jerr("Ism-familiya juda qisqa")
         run("UPDATE users SET full_name=?, registered=1 WHERE id=?", name, uid)
-    if "is_admin" in b:
+    if "is_admin" in b and bool(b["is_admin"]) != bool(target["is_admin"]):
+        if not me["is_owner"]:
+            return jerr("Admin qo'shish yoki olib tashlash faqat bosh admin uchun")
         if not b["is_admin"] and uid == request["user"]["id"]:
             return jerr("O'zingizni adminlikdan olib bo'lmaydi")
         if not b["is_admin"] and uid in ADMIN_IDS:
             return jerr("Bu admin server sozlamalarida (ADMIN_IDS) belgilangan")
-        run("UPDATE users SET is_admin=? WHERE id=?", 1 if b["is_admin"] else 0, uid)
+        run("UPDATE users SET is_admin=?, approved=1 WHERE id=?", 1 if b["is_admin"] else 0, uid)
     return web.json_response({"ok": True})
 
 
@@ -742,6 +890,11 @@ async def api_teacher_delete(request):
     uid = int(request.match_info["uid"])
     if uid == request["user"]["id"]:
         return jerr("O'zingizni o'chira olmaysiz")
+    t = q1("SELECT * FROM users WHERE id=?", uid)
+    if t and t["is_owner"]:
+        return jerr("Bosh adminni o'chirib bo'lmaydi")
+    if t and t["is_admin"] and not request["user"]["is_owner"]:
+        return jerr("Adminni faqat bosh admin o'chira oladi")
     run("DELETE FROM lessons WHERE user_id=?", uid)
     run("DELETE FROM users WHERE id=?", uid)
     return web.json_response({"ok": True})
@@ -850,12 +1003,12 @@ async def api_broadcast(request):
         return jerr("Xabar matnini yozing")
     target = b.get("target") or "all"
     if target == "all":
-        ids = [r["id"] for r in q("SELECT id FROM users WHERE id<>?", request["user"]["id"])]
+        ids = [r["id"] for r in q("SELECT id FROM users WHERE approved=1 AND id<>?", request["user"]["id"])]
     elif target == "unregistered":
-        ids = [r["id"] for r in q("SELECT id FROM users WHERE registered=0")]
+        ids = [r["id"] for r in q("SELECT id FROM users WHERE approved=1 AND registered=0")]
     elif target == "absent_today":
         t0 = day_start()
-        ids = [r["id"] for r in q("SELECT id FROM users WHERE is_admin=0 AND id NOT IN (SELECT user_id FROM lessons WHERE start_ts>=?)", t0)]
+        ids = [r["id"] for r in q("SELECT id FROM users WHERE approved=1 AND is_admin=0 AND id NOT IN (SELECT user_id FROM lessons WHERE start_ts>=?)", t0)]
     else:
         return jerr("Noto'g'ri qabul qiluvchi")
     if not ids:
@@ -887,6 +1040,54 @@ async def api_screen(request):
     })
 
 
+# ---------- admin: kirish kodlari
+async def api_invites(request):
+    rows = q("SELECT * FROM invites ORDER BY id DESC LIMIT 100")
+    joined = {}
+    for u in q("SELECT full_name, joined_via FROM users WHERE joined_via IS NOT NULL"):
+        joined.setdefault(u["joined_via"], []).append(u["full_name"])
+    pending = q("SELECT id, full_name, username, created_at FROM users WHERE approved=0 ORDER BY created_at DESC LIMIT 50")
+    return web.json_response({
+        "invites": [{**invite_dict(r), "people": joined.get(r["code"], [])} for r in rows],
+        "pending": [{"id": u["id"], "full_name": u["full_name"], "username": u["username"], "since": fmt_ts(u["created_at"])}
+                    for u in pending],
+        "is_owner": bool(request["user"]["is_owner"]),
+    })
+
+
+async def api_invite_create(request):
+    b = await body(request)
+    role = "admin" if b.get("role") == "admin" else "teacher"
+    if role == "admin" and not request["user"]["is_owner"]:
+        return jerr("Admin kodini faqat bosh admin yarata oladi")
+    uses = 1 if role == "admin" else max(1, min(int(b.get("uses") or 1), 500))
+    days = b.get("days")
+    days = 7.0 if days in (None, "") else max(0.0, min(float(days), 365))
+    inv = new_invite(role, uses, days, clean(b.get("note"), 60), request["user"]["id"])
+    return web.json_response({"ok": True, "invite": inv})
+
+
+async def api_invite_delete(request):
+    run("DELETE FROM invites WHERE id=?", int(request.match_info["iid"]))
+    return web.json_response({"ok": True})
+
+
+async def api_invite_send(request):
+    r = q1("SELECT * FROM invites WHERE id=?", int(request.match_info["iid"]))
+    if not r:
+        return jerr("Kod topilmadi", 404)
+    d = invite_dict(r)
+    who = "admin" if r["role"] == "admin" else "o'qituvchi"
+    till = f"\n⏳ {d['expires']['date']} gacha amal qiladi" if d["expires"] else ""
+    note = f"👤 {d['note']}\n" if d["note"] else ""
+    text = (f"🔑 {setting('org_name')} — davomat botiga taklif ({who})\n{note}\n"
+            f"Havolani bosing: {d['link']}\n\n"
+            f"yoki botga /start bosib, shu kodni yuboring: <code>{d['code']}</code>{till}")
+    await bot.send_message(request["user"]["id"], text, parse_mode="HTML", disable_web_page_preview=True)
+    await bot.send_message(request["user"]["id"], "☝️ Yuqoridagi xabarni o'qituvchiga uzating (Forward).")
+    return web.json_response({"ok": True, "message": "Taklif botga yuborildi — uni o'qituvchiga uzating 📩"})
+
+
 async def index(request):
     return web.FileResponse(WEBAPP_DIR / "index.html", headers={"Cache-Control": "no-cache"})
 
@@ -898,6 +1099,11 @@ def build_app() -> web.Application:
     r.add_get("/health", lambda req: web.Response(text="ok"))
     r.add_get("/api/me", api_me)
     r.add_post("/api/register", api_register)
+    r.add_post("/api/join", api_join)
+    r.add_get("/api/admin/invites", api_invites)
+    r.add_post("/api/admin/invites", api_invite_create)
+    r.add_post("/api/admin/invites/{iid:\\d+}/delete", api_invite_delete)
+    r.add_post("/api/admin/invites/{iid:\\d+}/send", api_invite_send)
     r.add_get("/api/admin/screen", api_screen)
     r.add_post("/api/scan", api_scan)
     r.add_get("/api/admin/stats", api_stats)
