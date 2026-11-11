@@ -24,7 +24,8 @@
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Nunito,system-ui,sans-serif;min-height:100%}
-body{overflow-x:hidden}
+body{overflow-x:hidden;padding-top:calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px))}
+.fs-float{position:fixed;top:calc(10px + var(--tg-content-safe-area-inset-top,0px));right:10px;z-index:40;height:38px;padding:0 14px;border-radius:13px;background:rgba(42,40,80,.85);color:#fff;font-weight:800;font-size:13px;box-shadow:0 6px 16px rgba(30,25,80,.35);backdrop-filter:blur(6px)}
 button{font:inherit;border:0;cursor:pointer;color:inherit;background:none}
 input,select,textarea{font:inherit;color:var(--ink)}
 .app{max-width:480px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:120px}
@@ -529,6 +530,7 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
   <button class="k-exit" id="kExit">✕ Ekran rejimidan chiqish (Esc)</button>
 </div>
 <div class="toast" id="toast"></div>
+<button class="fs-float hidden" id="fsFloat">⛶ Kattalashtirish</button>
 <div id="qrHidden" style="position:absolute;left:-9999px;top:0"></div>
 
 <script>
@@ -1004,10 +1006,25 @@ function closeKiosk() {
   goFullscreen(false); const i = openSheets.indexOf('kiosk'); if (i >= 0) openSheets.splice(i, 1);
   if (!openSheets.length) tg?.BackButton?.hide();
 }
+function fsUi() {
+  $('fsBtn').textContent = tg.isFullscreen ? '🗗 Kichraytirish' : "⛶ To'liq ekran";
+  // kompyuterda tor oynada «Kattalashtirish» tugmasi ko'rinadi
+  $('fsFloat').classList.toggle('hidden', !(IS_DESKTOP && !tg.isFullscreen && innerWidth < 760));
+}
 if (TG_FS) {
   $('fsBtn').classList.remove('hidden');
   $('fsBtn').onclick = () => goFullscreen(!tg.isFullscreen);
-  tg.onEvent?.('fullscreenChanged', () => $('fsBtn').textContent = tg.isFullscreen ? '🗗 Oddiy oyna' : "⛶ To'liq ekran");
+  $('fsFloat').onclick = () => goFullscreen(true);
+  tg.onEvent?.('fullscreenChanged', fsUi);
+  tg.onEvent?.('fullscreenFailed', e => { if (e?.error !== 'ALREADY_FULLSCREEN') toast('To'liq ekran rejimi bu Telegram versiyasida ishlamadi'); });
+  addEventListener('resize', fsUi);
+  fsUi();
+  // Telegram Desktop'da ilova o'zi kattalashadi
+  if (IS_DESKTOP && !tg.isFullscreen) setTimeout(() => goFullscreen(true), 150);
+} else if (IS_DESKTOP) {
+  $('fsFloat').textContent = 'Telegram'ni yangilang — to'liq ekran uchun';
+  $('fsFloat').classList.toggle('hidden', innerWidth >= 760);
+  $('fsFloat').onclick = () => toast('Telegram Desktop'ni oxirgi versiyaga yangilang');
 }
 $('openKiosk').onclick = openKiosk;
 $('kExit').onclick = () => closeKiosk();
