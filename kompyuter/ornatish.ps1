@@ -2,6 +2,7 @@
 # Ish stoli va Start menyusiga yorliq qo'yadi, xohlasangiz kompyuter yoqilganda avtomatik ochadi.
 # Hech narsa yuklab olinmaydi: Windows'dagi Microsoft Edge (yoki Chrome) "ilova oynasi" rejimida ishlatiladi.
 
+param([string]$Tanlov = '')   # 1, 2 yoki 3 — berilmasa so'raladi
 $ErrorActionPreference = 'Stop'
 $Url     = 'https://davomat-bot-4ci8.onrender.com/'
 $AppDir  = Join-Path $env:LOCALAPPDATA 'DavomatApp'
@@ -61,7 +62,7 @@ Write-Host '   1 - Ekran rejimi: katta QR kod va "hozir darsda" ro''yxati (kiris
 Write-Host '   2 - Admin panel (direktor / o''quv bo''limi kompyuteri uchun)'
 Write-Host '   3 - Hech narsa, faqat ish stoliga yorliq qo''yilsin'
 Write-Host ''
-$choice = Read-Host '  Tanlang (1, 2 yoki 3)'
+$choice = if ($Tanlov) { $Tanlov } else { Read-Host '  Tanlang (1, 2 yoki 3)' }
 
 $desktop  = [Environment]::GetFolderPath('Desktop')
 $programs = Join-Path ([Environment]::GetFolderPath('StartMenu')) 'Programs'
