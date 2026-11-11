@@ -1,35 +1,30 @@
-# Davomat bot (QR kod + Mini App)
+# O'qituvchilar davomati (QR kod + lokatsiya + Telegram Mini App)
 
 ## Qanday ishlaydi
-1. **Admin** ilovada dars yaratadi → ekranda QR kod chiqadi (har 10 soniyada yangilanadi, 45 soniyadan keyin eskiradi — rasmga olib yuborib bo'lmaydi).
-2. **Talaba** ilovadagi markaziy tugma bilan QR ni skanerlaydi (yoki oddiy telefon kamerasi bilan — bot ochilib, davomat avtomatik belgilanadi).
-3. Admin ekranida kelganlar ro'yxati jonli yangilanadi, «CSV» tugmasi Excel'da ochiladigan hisobotni botga yuboradi.
+1. Admin texnikum lokatsiyasini kiritadi va QR kodni chop etib, o'qituvchilar xonasi yoki kirish joyiga osadi.
+2. **O'qituvchi** darsga kirganda ilovadagi markaziy tugma bilan QR ni skanerlaydi → telefon joylashuvi olinadi → server texnikum hududida ekanini tekshiradi → guruh va fanni tanlab «Darsga kirdim» bosadi.
+3. Darsdan chiqqanda yana skanerlaydi → chiqish vaqti va dars davomiyligi yoziladi.
+4. Chiqish belgilanmasa, dars belgilangan vaqtdan keyin (standart 4 soat) «chiqish belgilanmagan» deb yopiladi va o'qituvchiga xabar boradi.
 
-### Admin panel (ilovadagi 🛡 tugma)
-- **Statistika** — talabalar, guruhlar, bugungi davomat %, 7 kunlik grafik, guruhlar reytingi, eng ko'p qoldirganlar, sana oralig'i bo'yicha Excel hisobot, adminlar ro'yxati.
-- **Darslar** — guruh uchun dars yaratish, jonli QR, «keldi / kelmadi» ro'yxati, qo'lda belgilash yoki belgini olib tashlash, Excel, kelmaganlarga eslatma, yopish/ochish, o'chirish.
-- **Talabalar** — qidiruv, guruh bo'yicha filtr, har bir talabaning foizi va tarixi, ismi/guruhini tahrirlash, admin qilish, o'chirish.
-- **Guruhlar** — qo'shish, nomini o'zgartirish, o'chirish.
-- **Xabar** — hammaga, guruhga yoki profilini to'ldirmaganlarga bot orqali xabar.
+Oddiy telefon kamerasi bilan skanerlansa ham ishlaydi: bot ochiladi va «📍 Tasdiqlash» tugmasi joylashuvni tekshiradi.
 
-Birinchi marta botga `/start` bosgan odam avtomatik admin bo'ladi (yoki `.env` dagi `ADMIN_IDS`).
-Boshqa admin qo'shish: `/addadmin 123456789`. O'z ID ingizni bilish: `/id`.
+## Admin panel (ilovadagi 🛡 tugma)
+- **Statistika** — hozir darsdagilar (jonli), bugungi darslar va soatlar, 7 kunlik grafik, oylik reyting, bugun kelmaganlar, Excel hisobot (umumiy + batafsil).
+- **Jurnal** — sana, o'qituvchi, guruh, holat bo'yicha filtr; darsni hozir yopish, chiqish vaqtini tuzatish, o'chirish.
+- **O'qituvchilar** — qidiruv, oylik soatlar, tarix, ismni tahrirlash, admin qilish, o'chirish.
+- **Guruhlar** — o'qituvchi darsga kirishda tanlaydigan guruhlar.
+- **Xabar** — hammaga, bugun dars belgilamaganlarga yoki profilini to'ldirmaganlarga.
+- **Sozlamalar** — texnikum lokatsiyasi (xarita, «Hozirgi joyimni olish», radius), lokatsiya tekshiruvini yoqish/o'chirish, muassasa nomi, dars yopilish vaqti, QR kodni chop etish uchun rasm qilib olish va yangilash.
+
+Birinchi marta botga `/start` bosgan odam avtomatik admin bo'ladi (yoki `ADMIN_IDS`).
+O'z ID ingizni bilish: `/id`.
 
 ## Ishga tushirish
 ```bash
 pip install -r requirements.txt
-```
-
-Mini ilova uchun **HTTPS manzil** kerak. Kompyuterda sinash uchun Cloudflare tunnel:
-```bash
-cloudflared tunnel --url http://localhost:8080
-```
-Chiqqan `https://....trycloudflare.com` manzilini `.env` dagi `WEBAPP_URL=` ga yozing, keyin:
-```bash
 python bot.py
 ```
-
-Doimiy ishlashi uchun serverga (VPS, Railway, Render va h.k.) joylang va `WEBAPP_URL` ni o'sha domenga qo'ying.
+Mini ilova uchun HTTPS manzil kerak (`WEBAPP_URL`). Render'da `render.yaml` orqali avtomatik sozlanadi (webhook rejimi).
 
 ## Fayllar
 - `bot.py` — bot + API server + SQLite baza (`davomat.db`)

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Davomat</title>
+<title>O'qituvchilar davomati</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -180,35 +180,65 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
 .modal p{margin:0 0 18px;color:var(--muted);font-size:14px;line-height:1.45}
 .modal .mrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
 .loading{display:grid;place-items:center;min-height:60vh;color:var(--muted);font-weight:700;text-align:center;padding:20px}
+
+.live-row .av{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;color:#fff;font-weight:800;flex:0 0 auto;font-size:14px}
+.modal p{white-space:pre-line}
+
+/* ---------- o'qituvchi holati ---------- */
+.live{font-size:34px;font-weight:800;letter-spacing:1px;margin-top:14px;font-variant-numeric:tabular-nums}
+.live-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#5fe0b0;box-shadow:0 0 10px #5fe0b0;margin-right:8px;animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.3}}
+.state-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:10px;font-size:12px;font-weight:800;margin-top:12px}
+.state-chip.in{background:rgba(95,224,176,.15);color:#7ff0c6}
+.state-chip.out{background:rgba(255,255,255,.08);color:#b9b5ea}
+.les-ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;flex:0 0 auto;color:#fff;font-weight:800;font-size:18px}
+.st-open{background:linear-gradient(145deg,#8a80ff,#5a50e6)} .st-done{background:linear-gradient(145deg,#5fe0b0,#25a97b)} .st-forgot{background:linear-gradient(145deg,#ffd27a,#f5a524)}
+.loc-card{display:flex;gap:12px;align-items:center;padding:14px;border-radius:18px;box-shadow:var(--sh-in);margin-top:18px;font-weight:700;font-size:14px;text-align:left}
+.loc-card .li{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;flex:0 0 auto;font-size:20px;background:var(--surface);box-shadow:var(--sh-sm)}
+.loc-card small{display:block;color:var(--muted);font-weight:600;font-size:12px}
+.map{width:100%;height:210px;border:0;border-radius:18px;box-shadow:var(--sh-in);display:block}
+.hint{color:var(--muted);font-size:12.5px;line-height:1.45;margin:2px 6px 0}
+.range{width:100%;accent-color:#6c63ff}
+.kv{display:flex;justify-content:space-between;font-weight:800;font-size:14px;padding:0 6px}
+.kv span:last-child{color:var(--navy3)}
+.qr-print{display:grid;place-items:center;padding:16px;border-radius:22px;background:#fff;box-shadow:var(--sh-in);margin:0 auto;width:max-content}
+.qr-print img,.qr-print canvas{width:200px!important;height:auto!important}
+.live-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.live-row:last-child{border-bottom:0}
+.live-row b{display:block;font-size:14px}
+.live-row small{color:#a5a2d6;font-size:12px}
+.live-row time{margin-left:auto;font-weight:800;color:#7ff0c6;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <div class="loading" id="loading">Yuklanmoqda…</div>
 
-  <!-- ===================== STUDENT HOME ===================== -->
+  <!-- ===================== O'QITUVCHI ===================== -->
   <section id="home" class="hidden">
     <div class="hero">
       <div class="notch"><div class="avatar" id="avatar">?</div></div>
       <div class="topbar">
-        <div class="ibtn"><svg width="26" height="26" viewBox="0 0 24 24" fill="#d8d5ff"><path d="M7 18a5 5 0 0 1-.6-9.96A6 6 0 0 1 17.8 9.1 4.5 4.5 0 0 1 17.5 18H7z"/></svg></div>
+        <div class="ibtn"><svg width="26" height="26" viewBox="0 0 24 24" fill="#d8d5ff"><path d="M12 3 1 9l11 6 9-4.9V17h2V9z"/><path d="M5 13.2V17c0 1.7 3.1 3 7 3s7-1.3 7-3v-3.8l-7 3.8z" opacity=".7"/></svg></div>
         <button class="ibtn" id="regBtn" aria-label="Profil"><svg width="24" height="24" fill="none" stroke="#d8d5ff" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
       </div>
-      <div class="pill"><span id="hello">Salom!</span><span id="myGroup" style="font-weight:800;color:#e3e0ff"></span></div>
+      <div class="pill"><span id="hello">Salom!</span><span id="todayDate" style="font-weight:800;color:#e3e0ff"></span></div>
       <div class="card">
         <div class="card-h">
-          <div class="logo"><svg width="26" height="26" viewBox="0 0 24 24"><defs><linearGradient id="lg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9ad5"/><stop offset="1" stop-color="#8f7bff"/></linearGradient></defs><rect x="3" y="3" width="7" height="7" rx="2" fill="url(#lg1)"/><rect x="14" y="3" width="7" height="7" rx="2" fill="url(#lg1)" opacity=".7"/><rect x="3" y="14" width="7" height="7" rx="2" fill="url(#lg1)" opacity=".7"/><rect x="14" y="14" width="3" height="3" rx="1" fill="url(#lg1)"/><rect x="18" y="18" width="3" height="3" rx="1" fill="url(#lg1)"/></svg></div>
-          <div><h1>Davomat</h1><div class="sub" id="statSub">0 ta dars</div></div>
+          <div class="logo" id="stateIcon"></div>
+          <div style="min-width:0"><h1 id="stateTitle">Darsda emassiz</h1><div class="sub" id="stateSub"></div></div>
         </div>
-        <div class="bar"><i id="barFill" style="width:0"></i></div>
-        <div class="bar-l"><span>Qatnashish</span><span id="pct">0%</span></div>
+        <div id="liveBox" class="hidden"><div class="live"><span class="live-dot"></span><span id="liveTimer">00:00:00</span></div></div>
+        <div class="bar-l" style="margin-top:18px"><span>Bu oy</span><span id="monthTxt"></span></div>
       </div>
     </div>
     <svg class="wave" viewBox="0 0 400 70" preserveAspectRatio="none"><path d="M0 70 L0 34 C80 34 110 2 200 2 C300 2 330 30 400 30 L400 70 Z" fill="var(--bg)"/></svg>
     <div class="content">
-      <div class="sec-h" style="margin-top:6px"><span>So'nggi darslar</span><span id="histCount"></span></div>
-      <div class="grid" id="hist"></div>
+      <div class="sec-h" style="margin-top:6px"><span>Bugungi darslar</span><span id="todayCount"></span></div>
+      <div class="list" id="todayList"></div>
       <div class="dark-panel"><h3>Oxirgi 14 kun</h3><div class="days" id="days"></div></div>
+      <div class="sec-h"><span>Oldingi darslar</span></div>
+      <div class="list" id="histList"></div>
     </div>
   </section>
 
@@ -216,13 +246,14 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
   <section id="admin" class="hidden">
     <div class="ahero">
       <h2><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#cfc9ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V7z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Admin panel</h2>
-      <p id="adminSub">Davomatni boshqarish</p>
+      <p id="adminSub">O'qituvchilar davomati</p>
       <div class="tabs" id="tabs">
         <button class="tab act" data-p="stats">📊 Statistika</button>
-        <button class="tab" data-p="sess">📚 Darslar</button>
-        <button class="tab" data-p="stud">👥 Talabalar</button>
+        <button class="tab" data-p="jur">📋 Jurnal</button>
+        <button class="tab" data-p="tch">👨‍🏫 O'qituvchilar</button>
         <button class="tab" data-p="grp">🗂 Guruhlar</button>
         <button class="tab" data-p="msg">📢 Xabar</button>
+        <button class="tab" data-p="set">⚙️ Sozlamalar</button>
       </div>
     </div>
     <svg class="wave" viewBox="0 0 400 70" preserveAspectRatio="none"><path d="M0 70 L0 34 C80 34 110 2 200 2 C300 2 330 30 400 30 L400 70 Z" fill="var(--bg)"/></svg>
@@ -230,48 +261,43 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
     <div class="content">
       <!-- STATISTIKA -->
       <div class="pane" id="p-stats">
+        <div id="geoWarn"></div>
         <div class="stats4" id="stTiles"></div>
-        <div class="dark-panel" style="margin-top:22px"><h3><span>Oxirgi 7 kun davomati</span><span id="todayRate"></span></h3><div class="days" id="chart" style="height:150px"></div></div>
-        <div class="sec-h"><span>Guruhlar bo'yicha</span></div>
-        <div class="list" id="grpRates"></div>
-        <div class="sec-h"><span>Eng ko'p qoldirganlar</span></div>
+        <div class="dark-panel" style="padding-right:18px;margin-top:22px"><h3 style="padding-right:0"><span>🟢 Hozir darsda</span><span id="nowCount"></span></h3><div id="nowList"></div></div>
+        <div class="dark-panel" style="margin-top:16px"><h3><span>Oxirgi 7 kun (darslar soni)</span></h3><div class="days" id="chart" style="height:150px"></div></div>
+        <div class="sec-h"><span>🏆 Bu oy eng ko'p dars o'tganlar</span></div>
+        <div class="list" id="rankList"></div>
+        <div class="sec-h"><span>Bugun hali kelmaganlar</span><span id="absCount"></span></div>
         <div class="list" id="absList"></div>
         <div class="sec-h"><span>📄 Hisobot (Excel)</span></div>
         <div class="box form">
-          <select class="inp" id="repGroup"></select>
-          <div class="row2">
-            <input class="inp" type="date" id="repFrom">
-            <input class="inp" type="date" id="repTo">
-          </div>
+          <select class="inp" id="repUser"></select>
+          <div class="row2"><input class="inp" type="date" id="repFrom"><input class="inp" type="date" id="repTo"></div>
           <div class="chips" style="padding-bottom:0">
             <button class="chip" data-r="0">Bugun</button><button class="chip" data-r="6">7 kun</button><button class="chip" data-r="29">30 kun</button><button class="chip" data-r="month">Shu oy</button>
           </div>
           <button class="btn" id="repBtn">Hisobotni botga yuborish</button>
+          <p class="hint">Ikkita fayl keladi: umumiy (har bir o'qituvchi bo'yicha jami soat) va batafsil (har bir dars).</p>
         </div>
-        <div class="sec-h"><span>👑 Adminlar</span></div>
-        <div class="list" id="adminList"></div>
       </div>
 
-      <!-- DARSLAR -->
-      <div class="pane hidden" id="p-sess">
+      <!-- JURNAL -->
+      <div class="pane hidden" id="p-jur">
         <div class="box form">
-          <input class="inp" id="newTitle" placeholder="Dars nomi (masalan: Matematika)" maxlength="80">
-          <select class="inp" id="newGroup"></select>
-          <button class="btn" id="createBtn"><svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M9 3v12M3 9h12"/></svg>Dars yaratish va QR chiqarish</button>
+          <div class="row2"><input class="inp" type="date" id="jFrom"><input class="inp" type="date" id="jTo"></div>
+          <select class="inp" id="jUser"></select>
+          <div class="row2"><select class="inp" id="jGroup"></select>
+            <select class="inp" id="jStatus"><option value="">Barcha holat</option><option value="open">🟣 Davom etmoqda</option><option value="done">🟢 Yakunlangan</option><option value="forgot">🟠 Chiqish yo'q</option></select></div>
         </div>
-        <div class="sec-h"><span>Darslar</span><span id="sessCount"></span></div>
-        <div class="chips" id="sessFilter"></div>
-        <div class="grid" id="sessions" style="margin-top:8px"></div>
+        <div class="sec-h"><span id="jCount">Darslar</span><span id="jHours"></span></div>
+        <div class="list" id="jList"></div>
       </div>
 
-      <!-- TALABALAR -->
-      <div class="pane hidden" id="p-stud">
-        <div class="box form">
-          <input class="inp" id="studQ" placeholder="🔍 Ism, username yoki ID bo'yicha qidirish">
-          <select class="inp" id="studGroup"></select>
-        </div>
-        <div class="sec-h"><span id="studCount">Talabalar</span></div>
-        <div class="list" id="studList"></div>
+      <!-- O'QITUVCHILAR -->
+      <div class="pane hidden" id="p-tch">
+        <div class="box form"><input class="inp" id="tQ" placeholder="🔍 Ism, username yoki ID bo'yicha qidirish"></div>
+        <div class="sec-h"><span id="tCount">O'qituvchilar</span><span>bu oy</span></div>
+        <div class="list" id="tList"></div>
       </div>
 
       <!-- GURUHLAR -->
@@ -279,6 +305,7 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
         <div class="box form">
           <input class="inp" id="newGrp" placeholder="Yangi guruh nomi (masalan: 101-guruh)" maxlength="40">
           <button class="btn" id="addGrp">Guruh qo'shish</button>
+          <p class="hint">O'qituvchi darsga kirganda qaysi guruhga dars o'tayotganini shu ro'yxatdan tanlaydi.</p>
         </div>
         <div class="sec-h"><span>Guruhlar</span><span id="grpCount"></span></div>
         <div class="list" id="grpList"></div>
@@ -288,12 +315,48 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
       <div class="pane hidden" id="p-msg">
         <div class="box form">
           <label class="lb">Kimga</label>
-          <select class="inp" id="msgTarget"></select>
+          <select class="inp" id="msgTarget">
+            <option value="all">📣 Barcha o'qituvchilarga</option>
+            <option value="absent_today">🕘 Bugun hali dars belgilamaganlarga</option>
+            <option value="unregistered">⚠️ Profilini to'ldirmaganlarga</option>
+          </select>
           <label class="lb">Xabar matni</label>
-          <textarea class="inp" id="msgText" placeholder="Masalan: Ertaga dars soat 9:00 da boshlanadi" maxlength="3500"></textarea>
+          <textarea class="inp" id="msgText" placeholder="Masalan: Ertaga soat 14:00 da pedagogik kengash bo'ladi" maxlength="3500"></textarea>
           <button class="btn" id="msgSend"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M3 11.5 21 3l-7 18-3-7.5z"/></svg>Yuborish</button>
         </div>
-        <p style="color:var(--muted);font-size:13px;text-align:center;margin-top:16px;line-height:1.5">Xabar bot orqali yuboriladi. Botni bloklagan foydalanuvchilarga yetib bormaydi.</p>
+      </div>
+
+      <!-- SOZLAMALAR -->
+      <div class="pane hidden" id="p-set">
+        <div class="sec-h" style="margin-top:4px"><span>📍 Texnikum lokatsiyasi</span></div>
+        <div class="box form">
+          <iframe class="map hidden" id="map" loading="lazy" referrerpolicy="no-referrer"></iframe>
+          <div class="loc-card" id="locState" style="margin-top:0"></div>
+          <button class="btn" id="useMyLoc">📍 Hozirgi joyimni olish</button>
+          <p class="hint">Texnikum hovlisida yoki binosi ichida turib bosing. Yoki koordinatalarni qo'lda kiriting (Google Maps'da joyni bosib turing — koordinata chiqadi):</p>
+          <div class="row2"><input class="inp" id="setLat" placeholder="Kenglik (lat)" inputmode="decimal"><input class="inp" id="setLon" placeholder="Uzunlik (lon)" inputmode="decimal"></div>
+          <div class="kv"><span>Ruxsat etilgan radius</span><span id="radTxt">200 m</span></div>
+          <input type="range" class="range" id="setRad" min="50" max="1000" step="10" value="200">
+          <div class="switch"><span>Lokatsiya tekshiruvi</span><button class="tg on" id="setGeo"></button></div>
+          <button class="btn" id="saveGeo">Saqlash</button>
+        </div>
+        <div class="sec-h"><span>⏱ Dars sozlamalari</span></div>
+        <div class="box form">
+          <label class="lb">Muassasa nomi</label>
+          <input class="inp" id="setOrg" maxlength="60" placeholder="Masalan: Arnasoy texnikumi">
+          <div class="kv"><span>Chiqish belgilanmasa, dars yopiladi</span><span id="mhTxt">4 soat</span></div>
+          <input type="range" class="range" id="setMh" min="1" max="12" step="0.5" value="4">
+          <button class="btn" id="saveMisc">Saqlash</button>
+        </div>
+        <div class="sec-h"><span>🔳 Davomat QR kodi</span><span id="qrVer"></span></div>
+        <div class="box form" style="text-align:center">
+          <div class="qr-print" id="qrPrint"></div>
+          <p class="hint" style="text-align:center">Bu kodni chop etib, o'qituvchilar xonasi yoki kirish joyiga osing. O'qituvchilar darsga kirganda va chiqqanda shu kodni skanerlaydi.</p>
+          <button class="btn" id="qrSend">🖨 Chop etish uchun yuborish</button>
+          <button class="btn light" id="qrRotate">🔄 Yangi QR yaratish</button>
+        </div>
+        <div class="sec-h"><span>👑 Adminlar</span></div>
+        <div class="list" id="adminList"></div>
       </div>
     </div>
   </section>
@@ -309,53 +372,42 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
   <button class="fab" id="scanBtn" aria-label="QR skanerlash"><i><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#cfc9ff" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/></svg></i></button>
 </nav>
 
-<!-- SESSION sheet -->
-<div class="sheet" id="qrSheet"><div class="sheet-in">
-  <button class="back" data-close="qrSheet"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4 6 10l6 6"/></svg>Orqaga</button>
-  <h2 id="qrTitle">Dars</h2>
-  <div class="center-sub" id="qrSub"></div>
-  <div class="qr-wrap">
-    <svg class="ring" viewBox="0 0 100 100"><rect x="1.5" y="1.5" width="97" height="97" rx="11" fill="none" stroke="#d6d3ee" stroke-width="1.6"/><rect id="ringBar" x="1.5" y="1.5" width="97" height="97" rx="11" fill="none" stroke="url(#rg)" stroke-width="1.6" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="0"/><defs><linearGradient id="rg"><stop offset="0" stop-color="#6c63ff"/><stop offset="1" stop-color="#ff8fcf"/></linearGradient></defs></svg>
-    <div class="qr-box" id="qrBox"></div>
-    <div class="qr-closed hidden" id="qrClosed">🔒 Davomat yopilgan</div>
+<!-- DARSGA KIRISH sheet -->
+<div class="sheet" id="startSheet"><div class="sheet-in">
+  <button class="back" data-close="startSheet"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4 6 10l6 6"/></svg>Bekor qilish</button>
+  <div class="big-av" style="background:linear-gradient(145deg,#8a80ff,#5a50e6)">🚪</div>
+  <h2>Darsga kirish</h2>
+  <div class="center-sub" id="startTime"></div>
+  <div class="loc-card" id="startLoc"></div>
+  <div class="form" style="margin-top:18px">
+    <label class="lb">Guruh</label>
+    <select class="inp" id="startGroup"></select>
+    <label class="lb">Fan (ixtiyoriy)</label>
+    <input class="inp" id="startSubject" maxlength="60" placeholder="Masalan: Matematika">
+    <button class="btn ok" id="startBtn">✅ Darsga kirdim</button>
   </div>
-  <div class="meta">
-    <div class="stat"><b id="qrCount" style="color:var(--ok)">0</b><small>keldi</small></div>
-    <div class="stat"><b id="qrAbs" style="color:var(--bad)">0</b><small>kelmadi</small></div>
-    <div class="stat"><b id="qrTimer">10</b><small>soniya</small></div>
-  </div>
-  <div class="actions">
-    <button class="btn light" id="exportBtn">📄 Excel</button>
-    <button class="btn light" id="notifyBtn">🔔 Kelmaganlarga</button>
-    <button class="btn" id="closeBtn">Yopish</button>
-    <button class="btn bad" id="delSessBtn">O'chirish</button>
-  </div>
-  <div class="seg" id="attSeg"><button class="act" data-v="in">✅ Keldi</button><button data-v="out">❌ Kelmadi</button></div>
-  <div class="list" id="attList"></div>
 </div></div>
 
-<!-- STUDENT sheet -->
-<div class="sheet" id="stSheet"><div class="sheet-in">
-  <button class="back" data-close="stSheet"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4 6 10l6 6"/></svg>Orqaga</button>
-  <div class="big-av" id="stAv">?</div>
-  <h2 id="stName">—</h2>
-  <div class="center-sub" id="stSub"></div>
+<!-- O'QITUVCHI (admin) sheet -->
+<div class="sheet" id="tSheet"><div class="sheet-in">
+  <button class="back" data-close="tSheet"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4 6 10l6 6"/></svg>Orqaga</button>
+  <div class="big-av" id="tAv">?</div>
+  <h2 id="tName">—</h2>
+  <div class="center-sub" id="tSub"></div>
   <div class="meta">
-    <div class="stat"><b id="stCame" style="color:var(--ok)">0</b><small>keldi</small></div>
-    <div class="stat"><b id="stMiss" style="color:var(--bad)">0</b><small>qoldirdi</small></div>
-    <div class="stat"><b id="stRate">0%</b><small>davomat</small></div>
+    <div class="stat"><b id="tLes" style="color:var(--accent)">0</b><small>dars (oy)</small></div>
+    <div class="stat"><b id="tHrs" style="color:var(--ok);font-size:17px;line-height:1.6">0</b><small>jami vaqt</small></div>
+    <div class="stat"><b id="tForgot" style="color:var(--warn)">0</b><small>chiqish yo'q</small></div>
   </div>
   <div class="box form" style="margin-top:22px">
-    <label class="lb">Ism-familiya</label>
-    <input class="inp" id="stEditName" maxlength="80">
-    <label class="lb">Guruh</label>
-    <select class="inp" id="stEditGroup"></select>
-    <div class="switch"><span>👑 Admin huquqi</span><button class="tg" id="stAdmin"></button></div>
-    <button class="btn" id="stSave">Saqlash</button>
+    <label class="lb">Familiya, ism</label>
+    <input class="inp" id="tEditName" maxlength="80">
+    <div class="switch"><span>👑 Admin huquqi</span><button class="tg" id="tAdmin"></button></div>
+    <button class="btn" id="tSave">Saqlash</button>
   </div>
-  <div class="sec-h"><span>Darslar tarixi</span><span style="font-size:11px">belgini bosib o'zgartiring</span></div>
-  <div class="list" id="stHist"></div>
-  <button class="btn bad" id="stDel" style="width:100%;margin-top:22px">Foydalanuvchini o'chirish</button>
+  <div class="sec-h"><span>Darslar tarixi</span></div>
+  <div class="list" id="tHist"></div>
+  <button class="btn bad" id="tDel" style="width:100%;margin-top:22px">O'qituvchini o'chirish</button>
 </div></div>
 
 <!-- REGISTER sheet -->
@@ -363,17 +415,14 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
   <div style="height:30px"></div>
   <div class="big-av" style="background:var(--surface)"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6c63ff" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div>
   <h2>Profilingiz</h2>
-  <div class="center-sub">Davomat hisobotida shu ma'lumotlar ko'rinadi</div>
+  <div class="center-sub">Davomat jurnalida shu ism ko'rinadi</div>
   <div class="form" style="margin-top:24px">
-    <label class="lb">Ism-familiya</label>
-    <input class="inp" id="regName" placeholder="Masalan: Aliyev Vali" maxlength="80" autocomplete="name">
-    <label class="lb" id="regGroupLb">Guruh</label>
-    <select class="inp" id="regGroup"></select>
+    <label class="lb">Familiya, ism, otasining ismi</label>
+    <input class="inp" id="regName" placeholder="Masalan: Aliyev Vali Karimovich" maxlength="80" autocomplete="name">
     <button class="btn" id="regSave">Saqlash</button>
   </div>
 </div></div>
 
-<!-- generic modal -->
 <div class="modal" id="modal"><div class="mbox">
   <div class="bigi" id="mIcon"></div>
   <h3 id="mTitle"></h3><p id="mText"></p>
@@ -381,13 +430,14 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
   <div class="mrow" id="mBtns"></div>
 </div></div>
 <div class="toast" id="toast"></div>
+<div id="qrHidden" style="position:absolute;left:-9999px;top:0"></div>
 
 <script>
 const tg = window.Telegram?.WebApp;
 const $ = id => document.getElementById(id);
 const DEMO = new URLSearchParams(location.search).has('demo');
-let ME = null, GROUPS = [], current = null, qr = null, tickT = null, attView = 'in', lastSession = null;
-let curStudent = null, stAdminOn = false, sessFilter = '';
+const URL_CODE = new URLSearchParams(location.search).get('code');
+let ME = null, GROUPS = [], liveT = null, curTeacher = null, tAdminOn = false, SET = null, pendingCode = null, pendingLoc = null;
 
 if (tg) { tg.ready(); tg.expand(); try{ tg.setHeaderColor('#3a3770'); tg.setBackgroundColor('#e4e3f1'); }catch(e){} }
 const haptic = t => { try{ t==='ok'||t==='error' ? tg.HapticFeedback.notificationOccurred(t==='ok'?'success':'error') : tg.HapticFeedback.impactOccurred('light'); }catch(e){} };
@@ -401,16 +451,17 @@ async function api(path, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await r.json().catch(() => ({error:'Server xatosi'}));
-  if (!r.ok && !('ok' in data)) throw new Error(data.error || 'Xatolik');
+  if (!r.ok) throw new Error(data.error || 'Xatolik');
   return data;
 }
-async function act(path, body, okMsg) {   // admin amali + toast
-  try { const r = await api(path, body || {}); if (r.error) throw new Error(r.error); if (okMsg || r.message) toast(okMsg || r.message); haptic('ok'); return r; }
+async function act(path, body, okMsg) {
+  try { const r = await api(path, body || {}); if (okMsg || r.message) toast(okMsg || r.message); haptic('ok'); return r; }
   catch (e) { toast('⚠️ ' + e.message); haptic('error'); return null; }
 }
 
 /* ---------------- helpers ---------------- */
 const MONTHS = ['YAN','FEV','MAR','APR','MAY','IYN','IYL','AVG','SEN','OKT','NOY','DEK'];
+const MONTHS_L = ['yanvar','fevral','mart','aprel','may','iyun','iyul','avgust','sentabr','oktabr','noyabr','dekabr'];
 const WD = ['Ya','Du','Se','Ch','Pa','Ju','Sh'];
 const HUES = [['#ffb86b','#ff7a59'],['#8fd3ff','#5b8cff'],['#c3a6ff','#7b61ff'],['#7ef0c4','#2fb99a'],['#ff9ad5','#ff5f9e'],['#ffe17a','#ffb02e']];
 const hue = s => HUES[[...String(s)].reduce((a,c)=>a+c.charCodeAt(0),0) % HUES.length];
@@ -418,105 +469,168 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const initials = n => String(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
 const fmtDate = d => { const [y,m,dd] = d.split('-'); return `${+dd} ${MONTHS[+m-1].toLowerCase()}`; };
 const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-const rateCls = r => r == null ? 'r-na' : r >= 80 ? 'r-hi' : r >= 50 ? 'r-mid' : 'r-lo';
-const av = (name, size) => { const [a,b] = hue(name); return `<span class="av" style="background:linear-gradient(145deg,${a},${b})">${esc(initials(name))}</span>`; };
-function icon(seed, kind='check') {
-  const [a,b] = hue(seed), id = 'g'+Math.random().toString(36).slice(2,8);
-  const shapes = {
-    check: `<circle cx="18" cy="18" r="13" fill="url(#${id})"/><path d="M12 18.5l4 4 8-9" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
-    book: `<rect x="7" y="6" width="22" height="25" rx="4" fill="url(#${id})"/><rect x="11" y="11" width="14" height="3" rx="1.5" fill="#fff" opacity=".85"/><rect x="11" y="17" width="9" height="3" rx="1.5" fill="#fff" opacity=".6"/>`,
-  };
-  return `<svg width="36" height="36" viewBox="0 0 36 36"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs>${shapes[kind]}</svg>`;
-}
+const av = name => { const [a,b] = hue(name); return `<span class="av" style="background:linear-gradient(145deg,${a},${b})">${esc(initials(name))}</span>`; };
+const hms = s => { s = Math.max(0, s|0); return [s/3600|0, (s%3600)/60|0, s%60].map(x => String(x).padStart(2,'0')).join(':'); };
+const durTxt = s => { const m = Math.max(0, s/60|0), h = m/60|0; return h ? `${h} soat ${m%60} daq` : `${m} daq`; };
+const lesTitle = l => [l.group, l.subject].filter(Boolean).join(' · ') || 'Dars';
 const I_OK = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2fb98a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
 const I_X = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff5f7e" stroke-width="3" stroke-linecap="round"><path d="M7 7l10 10M17 7 7 17"/></svg>`;
-function toast(msg) { const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2800); }
-function groupOptions(sel, {all, none, admins, allLabel='Barcha guruhlar', noneLabel='Guruhsiz'} = {}) {
-  sel.innerHTML = (all ? `<option value="">${allLabel}</option>` : '') + (none ? `<option value="none">${noneLabel}</option>` : '') +
-    (admins ? `<option value="admins">👑 Adminlar</option>` : '') + GROUPS.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
+function toast(msg) { const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),3000); }
+function lessonRow(l, {who=false, admin=false} = {}) {
+  const cls = {open:'st-open', done:'st-done', forgot:'st-forgot'}[l.status];
+  const ic = {open:'▶', done:'✓', forgot:'!'}[l.status];
+  const time = l.status === 'open' ? `${l.start.time} → hozir` : l.status === 'forgot' ? `${l.start.time} → chiqish belgilanmagan` : `${l.start.time} → ${l.end.time}`;
+  const dist = l.start_dist != null ? ` · 📍${l.start_dist} m` : '';
+  return `<${admin?'button':'div'} class="row-i" ${admin?`data-lid="${l.id}"`:''}>
+    <span class="les-ic ${cls}">${ic}</span>
+    <div class="mid"><b>${esc(who ? l.full_name : lesTitle(l))}${l.manual?'<span class="tag">tahrir</span>':''}</b>
+      <small>${who ? esc(lesTitle(l)) + ' · ' : (admin ? '' : '')}${fmtDate(l.start.date)} ${time}${admin?dist:''}</small></div>
+    ${l.status==='done' ? `<time>${l.duration_text}</time>` : l.status==='open' ? `<time style="color:var(--accent)">${l.duration_text}</time>` : ''}
+  </${admin?'button':'div'}>`;
 }
 
-/* ---------------- modal (alert / confirm / prompt) ---------------- */
+/* ---------------- modal ---------------- */
 function modal({icon='', title='', text='', input=null, buttons=[]}) {
   return new Promise(res => {
     $('mIcon').innerHTML = icon; $('mIcon').classList.toggle('hidden', !icon);
     $('mTitle').textContent = title; $('mText').textContent = text; $('mText').classList.toggle('hidden', !text);
     const inp = $('mInput'); inp.classList.toggle('hidden', input === null); inp.value = input ?? '';
+    inp.type = typeof input === 'object' && input ? input.type : 'text'; if (typeof input === 'object' && input) inp.value = input.value;
     $('mBtns').style.gridTemplateColumns = buttons.length > 1 ? '1fr 1fr' : '1fr';
     $('mBtns').innerHTML = buttons.map((b,i) => `<button class="btn ${b.cls||''}" data-i="${i}">${b.label}</button>`).join('');
-    $('mBtns').querySelectorAll('button').forEach(b => b.onclick = () => { $('modal').classList.remove('show'); res(buttons[+b.dataset.i].value === 'input' ? inp.value : buttons[+b.dataset.i].value); });
-    $('modal').classList.add('show'); if (input !== null) setTimeout(() => inp.focus(), 200);
+    $('mBtns').querySelectorAll('button').forEach(b => b.onclick = () => { $('modal').classList.remove('show'); const v = buttons[+b.dataset.i].value; res(v === 'input' ? inp.value : v); });
+    $('modal').classList.add('show');
   });
 }
 const confirmBox = (title, text, yes='Ha', cls='bad') => modal({title, text, buttons:[{label:'Bekor', cls:'light', value:false},{label:yes, cls, value:true}]});
-const promptBox = (title, value='') => modal({title, input:value, buttons:[{label:'Bekor', cls:'light', value:null},{label:'Saqlash', value:'input'}]});
-function showResult(ok, title, text) {
-  haptic(ok ? 'ok' : 'error');
-  return modal({icon: ok ? `<svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#2fb98a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`
-    : `<svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#ff5f7e" stroke-width="2.6" stroke-linecap="round"><path d="M7 7l10 10M17 7 7 17"/></svg>`,
-    title, text, buttons:[{label:'Yaxshi', value:true}]});
-}
+const promptBox = (title, value='', type='text') => modal({title, input:{type, value}, buttons:[{label:'Bekor', cls:'light', value:null},{label:'Saqlash', value:'input'}]});
+const ICON_OK = `<svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#2fb98a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
+const ICON_BAD = `<svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#ff5f7e" stroke-width="2.6" stroke-linecap="round"><path d="M7 7l10 10M17 7 7 17"/></svg>`;
+function showResult(ok, title, text) { haptic(ok ? 'ok' : 'error'); return modal({icon: ok ? ICON_OK : ICON_BAD, title, text, buttons:[{label:'Yaxshi', value:true}]}); }
 
-/* ---------------- sheets & back button ---------------- */
+/* ---------------- sheets ---------------- */
 const openSheets = [];
 function openSheet(id) { $(id).classList.add('show'); $(id).scrollTop = 0; if (!openSheets.includes(id)) openSheets.push(id); tg?.BackButton?.show(); }
 function closeSheet(id) {
   $(id).classList.remove('show'); const i = openSheets.indexOf(id); if (i >= 0) openSheets.splice(i, 1);
-  if (id === 'qrSheet') { clearInterval(tickT); current = null; if (ME?.user.is_admin) loadSessions(); }
-  if (id === 'stSheet' && ME?.user.is_admin) { curStudent = null; if (!$('p-stud').classList.contains('hidden')) loadStudents(); }
+  if (id === 'tSheet' && !$('p-tch').classList.contains('hidden')) loadTeachers();
   if (!openSheets.length) tg?.BackButton?.hide();
 }
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => closeSheet(b.dataset.close));
 tg?.BackButton?.onClick(() => { if ($('modal').classList.contains('show')) return; const top = openSheets[openSheets.length-1]; if (top) closeSheet(top); });
 
-/* ================= STUDENT HOME ================= */
+/* ---------------- joylashuv ---------------- */
+function getLocation() {
+  if (DEMO) return Promise.resolve({lat: 40.1, lon: 67.8, acc: 15});
+  const LM = tg?.LocationManager;
+  if (LM && tg.isVersionAtLeast?.('8.0')) {
+    return new Promise((res, rej) => {
+      LM.init(() => {
+        if (!LM.isLocationAvailable) return rej(new Error('Bu qurilmada joylashuv mavjud emas. GPS ni yoqing'));
+        LM.getLocation(d => {
+          if (d) return res({lat: d.latitude, lon: d.longitude, acc: d.horizontal_accuracy || 0});
+          if (LM.isAccessRequested && !LM.isAccessGranted) {
+            modal({icon:'📍', title:'Joylashuvga ruxsat bering', text:'Telegram sozlamalarida bu botga joylashuvdan foydalanishga ruxsat bering.',
+                   buttons:[{label:'Bekor', cls:'light', value:false},{label:'Sozlamalar', value:true}]}).then(v => v && LM.openSettings());
+          }
+          rej(new Error('Joylashuvga ruxsat berilmadi'));
+        });
+      });
+    });
+  }
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej(new Error('Joylashuv aniqlanmadi'));
+    navigator.geolocation.getCurrentPosition(
+      p => res({lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy || 0}),
+      e => rej(new Error(e.code === 1 ? 'Joylashuvga ruxsat berilmadi. Telefon sozlamalarida Telegramga ruxsat bering' : 'Joylashuv aniqlanmadi. GPS ni yoqing va qayta urinib ko\'ring')),
+      {enableHighAccuracy: true, timeout: 15000, maximumAge: 0});
+  });
+}
+
+/* ================= O'QITUVCHI ================= */
 function renderHome() {
-  const u = ME.user, s = ME.stats;
+  const u = ME.user, o = ME.open, m = ME.month;
   $('avatar').textContent = initials(u.full_name);
-  $('hello').textContent = `Salom, ${u.full_name.split(' ')[0]}!`;
-  $('myGroup').textContent = u.group || '';
-  $('statSub').textContent = `${s.attended} ta darsda qatnashgan` + (s.missed ? ` · ${s.missed} ta qoldirgan` : '');
-  $('pct').textContent = s.rate + '%'; requestAnimationFrame(()=> $('barFill').style.width = s.rate + '%');
-  const h = ME.history;
-  $('histCount').textContent = h.length ? h.length + ' ta' : '';
-  $('hist').innerHTML = h.length ? h.slice(0, 9).map(r => `
-    <div class="tile"><div class="ic">${icon(r.title)}</div><b>${esc(r.title)}</b><small>${fmtDate(r.date)} · ${r.time}</small></div>`).join('')
-    : `<div class="empty">Hali davomat yo'q.<br>Pastdagi tugmani bosib, darsdagi QR kodni skanerlang.</div>`;
-  const on = new Set(h.map(r => r.date)), days = [];
+  $('hello').textContent = `Salom, ${u.full_name.split(' ')[1] || u.full_name.split(' ')[0]}!`;
+  const d = new Date(); $('todayDate').textContent = `${d.getDate()} ${MONTHS_L[d.getMonth()]}`;
+  $('monthTxt').textContent = `${m.lessons} dars · ${m.hours_text || '0 daq'}`;
+  clearInterval(liveT);
+  if (o) {
+    $('stateIcon').innerHTML = `<span style="font-size:24px">🟢</span>`;
+    $('stateTitle').textContent = 'Darsdasiz';
+    $('stateSub').textContent = `${lesTitle(o)} · ${o.start.time} da kirdingiz`;
+    $('liveBox').classList.remove('hidden');
+    const skew = Date.now()/1000 - ME.server_time;
+    const tick = () => $('liveTimer').textContent = hms(Date.now()/1000 - skew - o.start.ts);
+    tick(); liveT = setInterval(tick, 1000);
+  } else {
+    $('stateIcon').innerHTML = `<span style="font-size:24px">🚪</span>`;
+    $('stateTitle').textContent = 'Darsda emassiz';
+    $('stateSub').textContent = 'Darsga kirganda pastdagi tugma bilan QR kodni skanerlang';
+    $('liveBox').classList.add('hidden');
+  }
+  $('todayCount').textContent = ME.today.length ? ME.today.length + ' ta' : '';
+  $('todayList').innerHTML = ME.today.length ? ME.today.map(l => lessonRow(l)).join('') : `<div class="empty">Bugun hali dars belgilanmagan.</div>`;
+  $('histList').innerHTML = ME.history.length ? ME.history.map(l => lessonRow(l)).join('') : `<div class="empty">Tarix bo'sh</div>`;
+  const on = new Set(ME.days), days = [];
   for (let i = 0; i < 14; i++) days.push(new Date(Date.now() - i*864e5));
   $('days').innerHTML = days.map(d => `<div class="day ${on.has(ymd(d))?'on':''}"><span class="dot"></span>${d.getDate()}<small>${MONTHS[d.getMonth()]}</small></div>`).join('');
 }
 
-async function doCheckin(code) {
-  try {
-    const r = await api('/api/checkin', {code});
-    await showResult(r.ok, r.ok ? 'Belgilandingiz!' : 'Qabul qilinmadi', r.message);
-    if (r.ok) { ME = await api('/api/me'); renderHome(); }
-  } catch (e) { showResult(false, 'Xatolik', e.message); }
+async function handleCode(code) {
+  if (!ME.user.registered) { toast('Avval familiya va ismingizni kiriting'); return openReg(); }
+  pendingCode = code;
+  toast('📍 Joylashuv aniqlanmoqda…');
+  let loc = null;
+  try { loc = await getLocation(); }
+  catch (e) { if (ME.geo.configured && ME.geo.required) return showResult(false, 'Joylashuv kerak', e.message); }
+  pendingLoc = loc;
+  if (ME.open) {
+    const o = ME.open, dur = durTxt(Date.now()/1000 - o.start.ts);
+    if (!await modal({icon:'🏁', title:'Darsdan chiqish', text:`${lesTitle(o)}\nKirgan vaqt: ${o.start.time} · ${dur}`,
+                      buttons:[{label:'Bekor', cls:'light', value:false},{label:'Chiqdim', cls:'ok', value:true}]})) return;
+    try { const r = await api('/api/scan', {action:'end', code, ...(loc||{})}); await showResult(true, 'Chiqish qayd etildi', r.message); }
+    catch (e) { return showResult(false, 'Qabul qilinmadi', e.message); }
+    await reloadMe();
+  } else {
+    const n = new Date();
+    $('startTime').textContent = `${n.getDate()} ${MONTHS_L[n.getMonth()]}, ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+    $('startLoc').innerHTML = !ME.geo.configured ? `<span class="li">ℹ️</span><div>Lokatsiya tekshiruvi sozlanmagan<small>Admin texnikum joylashuvini kiritmagan</small></div>`
+      : loc ? `<span class="li">📍</span><div>Joylashuv aniqlandi<small>Aniqlik: ±${Math.round(loc.acc||0)} m · tekshiruv serverda</small></div>`
+            : `<span class="li">⚠️</span><div>Joylashuv aniqlanmadi</div>`;
+    $('startGroup').innerHTML = `<option value="">— Guruhni tanlang —</option>` + GROUPS.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
+    $('startGroup').value = ME.last?.group_id || '';
+    $('startSubject').value = ME.last?.subject || '';
+    openSheet('startSheet');
+  }
 }
+$('startBtn').onclick = async () => {
+  if (GROUPS.length && !$('startGroup').value) return toast('Guruhni tanlang');
+  $('startBtn').disabled = true;
+  try {
+    const r = await api('/api/scan', {action:'start', code: pendingCode, group_id: $('startGroup').value || null, subject: $('startSubject').value, ...(pendingLoc||{})});
+    closeSheet('startSheet'); await showResult(true, 'Darsga kirdingiz!', r.message); await reloadMe();
+  } catch (e) { showResult(false, 'Qabul qilinmadi', e.message); }
+  $('startBtn').disabled = false;
+};
+async function reloadMe() { ME = await api('/api/me'); GROUPS = ME.groups; renderHome(); }
+
 $('scanBtn').onclick = () => {
   haptic();
-  if (DEMO || !tg?.showScanQrPopup || !tg.isVersionAtLeast?.('6.4')) { toast('QR skaner faqat Telegram ilovasida ishlaydi'); return; }
+  if (DEMO) return handleCode('demo');
+  if (!tg?.showScanQrPopup || !tg.isVersionAtLeast?.('6.4')) return toast('QR skaner faqat Telegram ilovasida ishlaydi');
   let done = false;
-  tg.showScanQrPopup({text: 'Ekrandagi davomat QR kodini skanerlang'}, text => {
-    if (done) return true; done = true; tg.closeScanQrPopup(); doCheckin(text); return true;
+  tg.showScanQrPopup({text: ME.open ? 'Darsdan chiqish: QR kodni skanerlang' : 'Darsga kirish: QR kodni skanerlang'}, text => {
+    if (done) return true; done = true; tg.closeScanQrPopup(); setTimeout(() => handleCode(text), 300); return true;
   });
 };
 
-function openReg() {
-  $('regName').value = ME.user.registered ? ME.user.full_name : '';
-  const has = GROUPS.length > 0;
-  $('regGroup').classList.toggle('hidden', !has); $('regGroupLb').classList.toggle('hidden', !has);
-  $('regGroup').innerHTML = `<option value="">— Guruhni tanlang —</option>` + GROUPS.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
-  $('regGroup').value = ME.user.group_id || '';
-  openSheet('regSheet');
-}
+function openReg() { $('regName').value = ME.user.registered ? ME.user.full_name : ''; openSheet('regSheet'); }
 $('regBtn').onclick = openReg;
 $('regSave').onclick = async () => {
-  const r = await act('/api/register', {full_name: $('regName').value, group_id: $('regGroup').value || null}, 'Saqlandi ✅');
-  if (!r) return;
-  Object.assign(ME.user, {full_name: r.full_name, group_id: r.group_id, group: r.group, registered: true});
-  renderHome(); closeSheet('regSheet');
+  const r = await act('/api/register', {full_name: $('regName').value}, 'Saqlandi ✅'); if (!r) return;
+  ME.user.full_name = r.full_name; ME.user.registered = true; renderHome(); closeSheet('regSheet');
+  if (URL_CODE && !ME._codeUsed) { ME._codeUsed = true; handleCode(URL_CODE); }
 };
 
 /* ================= ADMIN ================= */
@@ -525,197 +639,111 @@ document.querySelectorAll('#tabs .tab').forEach(t => t.onclick = () => { haptic(
 function showPane(p) {
   curPane = p;
   document.querySelectorAll('#tabs .tab').forEach(t => { t.classList.toggle('act', t.dataset.p === p); if (t.dataset.p === p) t.scrollIntoView({inline:'center', block:'nearest', behavior:'smooth'}); });
-  ['stats','sess','stud','grp','msg'].forEach(x => $('p-'+x).classList.toggle('hidden', x !== p));
-  ({stats: loadStats, sess: loadSessions, stud: loadStudents, grp: loadGroups, msg: fillMsg})[p]();
+  ['stats','jur','tch','grp','msg','set'].forEach(x => $('p-'+x).classList.toggle('hidden', x !== p));
+  ({stats: loadStats, jur: loadJournal, tch: loadTeachers, grp: loadGroups, msg: ()=>{}, set: loadSettings})[p]();
 }
-async function refreshGroups() { const r = await api('/api/admin/groups'); GROUPS = r.groups; return r.groups; }
+let TEACHERS = [];
+async function refreshTeachers() { TEACHERS = (await api('/api/admin/teachers')).teachers; return TEACHERS; }
+async function refreshGroups() { GROUPS = (await api('/api/admin/groups')).groups; return GROUPS; }
+const teacherOpts = (label) => `<option value="">${label}</option>` + TEACHERS.map(t => `<option value="${t.id}">${esc(t.full_name)}</option>`).join('');
 
 /* ---- statistika ---- */
 async function loadStats() {
   try {
     const s = await api('/api/admin/stats');
-    $('adminSub').textContent = `${s.students} talaba · ${s.groups_count} guruh · ${s.sessions_total} dars`;
-    const tiles = [
-      ['👥', s.students, 'talaba', '#7b61ff'],
-      ['🗂', s.groups_count, 'guruh', '#5b8cff'],
-      ['📚', s.today.sessions, 'bugungi dars', '#ff7a59'],
-      ['✅', s.today.rate == null ? '—' : s.today.rate + '%', 'bugungi davomat', '#2fb98a'],
-    ];
+    $('adminSub').textContent = `${s.teachers} o'qituvchi · bugun ${s.today.lessons} dars`;
+    $('geoWarn').innerHTML = s.geo.configured ? '' : `<button class="loc-card" style="width:100%;margin:0 0 18px;background:#fff4dc" onclick="showPane('set')"><span class="li">📍</span><div>Texnikum lokatsiyasi kiritilmagan<small>Hozir o'qituvchilar istalgan joydan belgilay oladi. Sozlash uchun bosing →</small></div></button>`;
+    const tiles = [['👨‍🏫', s.teachers, "o'qituvchi", '#7b61ff'], ['🟢', s.now_in.length, 'hozir darsda', '#2fb98a'],
+                   ['📚', s.today.lessons, 'bugungi dars', '#ff7a59'], ['⏱', s.today.hours + ' s', 'bugun jami', '#5b8cff']];
     $('stTiles').innerHTML = tiles.map(t => `<div class="st"><span class="si" style="font-size:20px">${t[0]}</span><div><b style="color:${t[3]}">${t[1]}</b><small>${t[2]}</small></div></div>`).join('') +
+      (s.month_forgot ? `<div class="st" style="grid-column:1/-1"><span class="si">🟠</span><div><b style="font-size:16px">${s.month_forgot} ta dars</b><small>bu oy chiqish belgilanmagan</small></div></div>` : '') +
       (s.unregistered ? `<div class="st" style="grid-column:1/-1"><span class="si">⚠️</span><div><b style="font-size:16px">${s.unregistered} kishi</b><small>profilini to'ldirmagan</small></div></div>` : '');
-    $('todayRate').textContent = s.today.expected ? `Bugun: ${s.today.came}/${s.today.expected}` : '';
-    $('chart').innerHTML = s.days.map(d => {
-      const dt = new Date(d.date + 'T00:00'), r = d.rate;
-      const h = r == null ? 56 : 56 + Math.round(r * 0.84);
-      return `<div class="day chart ${r!=null && r>=50 ? 'on':''}" style="height:${h}px" title="${d.came}/${d.expected}"><b>${r==null?'—':r+'%'}</b><small>${WD[dt.getDay()]} ${dt.getDate()}</small></div>`;
-    }).join('');
-    $('grpRates').innerHTML = s.groups.length ? s.groups.map(g => `
-      <div class="row-i"><span class="av" style="background:linear-gradient(145deg,${hue(g.name)[0]},${hue(g.name)[1]})">🗂</span>
-        <div class="mid"><b>${esc(g.name)}</b><small>${g.members} talaba · ${g.sessions} dars</small><div class="gbar"><i style="width:${g.rate||0}%"></i></div></div>
-        <span class="rate ${rateCls(g.rate)}">${g.rate==null?'—':g.rate+'%'}</span></div>`).join('')
-      : `<div class="empty">Guruhlar yo'q. «Guruhlar» bo'limida qo'shing.</div>`;
-    $('absList').innerHTML = s.absentees.length ? s.absentees.map(u => `
-      <button class="row-i" data-uid="${u.id}">${av(u.full_name)}<div class="mid"><b>${esc(u.full_name)}</b><small>${esc(u.group||'Guruhsiz')} · ${u.missed} ta qoldirgan</small></div>
-        <span class="rate ${rateCls(u.rate)}">${u.rate}%</span></button>`).join('')
-      : `<div class="empty">Hamma darslarga kelgan 🎉</div>`;
-    $('absList').querySelectorAll('[data-uid]').forEach(b => b.onclick = () => openStudent(+b.dataset.uid));
-    $('adminList').innerHTML = s.admins.map(a => `
-      <button class="row-i" data-uid="${a.id}">${av(a.full_name)}<div class="mid"><b>${esc(a.full_name)}</b><small>${a.username ? '@'+esc(a.username) : 'ID: '+a.id}</small></div><span class="tag admin">admin</span></button>`).join('') +
-      `<div class="empty" style="padding:14px;font-size:13px">Admin qo'shish: «Talabalar» bo'limida odamni ochib, «Admin huquqi»ni yoqing.</div>`;
-    $('adminList').querySelectorAll('[data-uid]').forEach(b => b.onclick = () => openStudent(+b.dataset.uid));
-    await refreshGroups(); groupOptions($('repGroup'), {all:true, allLabel:'Barcha talabalar'});
+    $('nowCount').textContent = s.now_in.length || '';
+    $('nowList').innerHTML = s.now_in.length ? s.now_in.map(l => `<div class="live-row">${av(l.full_name)}<div><b>${esc(l.full_name)}</b><small>${esc(lesTitle(l))} · ${l.start.time} dan</small></div><time>${l.duration_text}</time></div>`).join('')
+      : `<div style="color:#a5a2d6;font-size:14px;padding:4px 0 8px">Hozir hech kim darsda emas</div>`;
+    const mx = Math.max(1, ...s.days.map(d => d.lessons));
+    $('chart').innerHTML = s.days.map(d => { const dt = new Date(d.date + 'T00:00');
+      return `<div class="day chart ${d.lessons?'on':''}" style="height:${56 + Math.round(d.lessons/mx*84)}px"><b>${d.lessons}</b><small>${WD[dt.getDay()]} ${dt.getDate()}</small></div>`; }).join('');
+    $('rankList').innerHTML = s.ranking.length ? s.ranking.map((r,i) => `
+      <button class="row-i" data-uid="${r.id}"><span class="av" style="background:${['linear-gradient(145deg,#ffe17a,#f5a524)','linear-gradient(145deg,#e3e6ee,#a9b0c2)','linear-gradient(145deg,#ffc29a,#d9824a)'][i] || 'linear-gradient(145deg,#c3a6ff,#7b61ff)'}">${i+1}</span>
+        <div class="mid"><b>${esc(r.full_name)}</b><small>${r.lessons} dars${r.forgot?` · ${r.forgot} ta chiqish yo'q`:''}</small></div><time>${r.hours_text}</time></button>`).join('')
+      : `<div class="empty">Bu oy hali darslar yo'q</div>`;
+    $('absCount').textContent = s.absent_today.length || '';
+    $('absList').innerHTML = s.absent_today.length ? s.absent_today.map(t => `<button class="row-i" data-uid="${t.id}">${av(t.full_name)}<div class="mid"><b>${esc(t.full_name)}</b><small>bugun dars belgilamagan</small></div></button>`).join('')
+      : `<div class="empty">Hamma bugun dars belgilagan 🎉</div>`;
+    document.querySelectorAll('#rankList [data-uid], #absList [data-uid]').forEach(b => b.onclick = () => openTeacher(+b.dataset.uid));
+    await refreshTeachers(); $('repUser').innerHTML = teacherOpts('Barcha o\'qituvchilar');
     if (!$('repFrom').value) setRange(6);
   } catch (e) { toast(e.message); }
 }
-function setRange(r) {
-  const now = new Date(); let from;
-  if (r === 'month') from = new Date(now.getFullYear(), now.getMonth(), 1); else from = new Date(Date.now() - (+r)*864e5);
-  $('repFrom').value = ymd(from); $('repTo').value = ymd(now);
-}
+function setRange(r) { const now = new Date(); const from = r === 'month' ? new Date(now.getFullYear(), now.getMonth(), 1) : new Date(Date.now() - (+r)*864e5); $('repFrom').value = ymd(from); $('repTo').value = ymd(now); }
 document.querySelectorAll('[data-r]').forEach(c => c.onclick = () => { haptic(); setRange(c.dataset.r); });
-$('repBtn').onclick = async () => {
-  $('repBtn').disabled = true;
-  await act('/api/admin/report', {group_id: $('repGroup').value || null, from: $('repFrom').value, to: $('repTo').value});
-  $('repBtn').disabled = false;
-};
+$('repBtn').onclick = async () => { $('repBtn').disabled = true; await act('/api/admin/report', {user_id: $('repUser').value || null, from: $('repFrom').value, to: $('repTo').value}); $('repBtn').disabled = false; };
 
-/* ---- darslar ---- */
-async function loadSessions() {
+/* ---- jurnal ---- */
+async function loadJournal() {
   try {
-    await refreshGroups();
-    groupOptions($('newGroup'), {all:true, allLabel:'Barcha talabalar uchun'});
-    $('sessFilter').innerHTML = [`<button class="chip ${sessFilter===''?'act':''}" data-g="">Hammasi</button>`]
-      .concat(GROUPS.map(g => `<button class="chip ${sessFilter==g.id?'act':''}" data-g="${g.id}">${esc(g.name)}</button>`)).join('');
-    $('sessFilter').querySelectorAll('[data-g]').forEach(c => c.onclick = () => { sessFilter = c.dataset.g; loadSessions(); });
-    const r = await api('/api/admin/sessions' + (sessFilter ? '?group=' + sessFilter : ''));
-    $('sessCount').textContent = r.sessions.length ? r.sessions.length + ' ta' : '';
-    $('sessions').innerHTML = r.sessions.length ? r.sessions.map(s => `
-      <button class="tile ${s.closed?'closed':''}" data-id="${s.id}">
-        <div class="ic">${icon(s.title,'book')}<span class="badge">${s.count}${s.expected?'/'+s.expected:''}</span></div>
-        <b>${esc(s.title)}</b><small>${s.closed?'🔒 ':''}${esc(s.group||'Hamma')} · ${fmtDate(s.date)} ${s.time}</small>
-      </button>`).join('') : `<div class="empty">Hali dars yo'q. Yuqorida nom yozib «Dars yaratish»ni bosing.</div>`;
-    $('sessions').querySelectorAll('[data-id]').forEach(b => b.onclick = () => openSession(+b.dataset.id));
+    if (!$('jFrom').value) { $('jFrom').value = $('jTo').value = ymd(new Date()); }
+    if (!$('jUser').options.length) { await refreshTeachers(); $('jUser').innerHTML = teacherOpts('Barcha o\'qituvchilar'); }
+    if (!$('jGroup').options.length) { await refreshGroups(); $('jGroup').innerHTML = `<option value="">Barcha guruhlar</option>` + GROUPS.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join(''); }
+    const p = new URLSearchParams({from: $('jFrom').value, to: $('jTo').value, user: $('jUser').value, group: $('jGroup').value, status: $('jStatus').value});
+    const r = await api('/api/admin/lessons?' + p);
+    const secs = r.lessons.filter(l => l.status === 'done').reduce((a, l) => a + l.duration, 0);
+    $('jCount').textContent = `${r.lessons.length} ta dars`; $('jHours').textContent = secs ? 'jami ' + durTxt(secs) : '';
+    $('jList').innerHTML = r.lessons.length ? r.lessons.map(l => lessonRow(l, {who:true, admin:true})).join('') : `<div class="empty">Bu oraliqda darslar yo'q</div>`;
+    $('jList').querySelectorAll('[data-lid]').forEach(b => b.onclick = () => lessonMenu(r.lessons.find(x => x.id == b.dataset.lid)));
   } catch (e) { toast(e.message); }
 }
-$('createBtn').onclick = async () => {
-  const r = await act('/api/admin/sessions', {title: $('newTitle').value, group_id: $('newGroup').value || null}, 'Dars yaratildi');
-  if (r) { $('newTitle').value = ''; openSession(r.id); }
-};
+['jFrom','jTo','jUser','jGroup','jStatus'].forEach(id => $(id).onchange = loadJournal);
+async function lessonMenu(l) {
+  const txt = `${lesTitle(l)}\n${fmtDate(l.start.date)} · kirdi ${l.start.time}` + (l.end ? ` · chiqdi ${l.end.time}` : '') +
+              (l.start_dist != null ? `\nKirishda masofa: ${l.start_dist} m` : '') + (l.end_dist != null ? ` · chiqishda: ${l.end_dist} m` : '');
+  const btns = [];
+  if (l.status === 'open') btns.push({label:'⏹ Hozir yopish', value:'now'});
+  btns.push({label:'🕐 Chiqish vaqti', cls:'light', value:'time'});
+  btns.push({label:'🗑 O\'chirish', cls:'bad', value:'del'}, {label:'Yopish', cls:'light', value:null});
+  const v = await modal({title: l.full_name, text: txt, buttons: btns});
+  if (v === 'now') { if (await act(`/api/admin/lessons/${l.id}`, {end_now:true}, 'Dars yopildi')) refreshAfterLesson(); }
+  if (v === 'time') { const t = await promptBox('Chiqish vaqti (shu kun)', l.end?.time || '', 'time'); if (t && await act(`/api/admin/lessons/${l.id}`, {end_time:t}, 'Saqlandi')) refreshAfterLesson(); }
+  if (v === 'del' && await confirmBox('Darsni o\'chirish?', 'Bu yozuv jurnaldan butunlay o\'chadi.', 'O\'chirish')) { if (await act(`/api/admin/lessons/${l.id}/delete`, {}, 'O\'chirildi')) refreshAfterLesson(); }
+}
+function refreshAfterLesson() { if ($('tSheet').classList.contains('show')) openTeacher(curTeacher); else loadJournal(); }
 
-function renderAtt() {
-  const s = lastSession; if (!s) return;
-  document.querySelectorAll('#attSeg button').forEach(b => b.classList.toggle('act', b.dataset.v === attView));
-  const items = attView === 'in' ? s.attendees : s.absent;
-  $('attList').innerHTML = items.length ? items.map(a => `
-    <div class="row-i">${av(a.full_name)}<div class="mid"><b>${esc(a.full_name)}${a.manual?'<span class="tag">qo\'lda</span>':''}</b><small>${esc(a.group||'')}${a.username?' · @'+esc(a.username):''}</small></div>
-      ${attView === 'in' ? `<time>${a.time}</time><button class="act-b" data-un="${a.id}" title="Belgini olib tashlash">${I_X}</button>`
-                         : `<button class="act-b" data-mk="${a.id}" title="Keldi deb belgilash">${I_OK}</button>`}
-    </div>`).join('') : `<div class="empty">${attView === 'in' ? 'Hali hech kim kelmadi' : 'Hamma keldi 🎉'}</div>`;
-  $('attList').querySelectorAll('[data-mk]').forEach(b => b.onclick = () => mark(+b.dataset.mk, true));
-  $('attList').querySelectorAll('[data-un]').forEach(b => b.onclick = async () => {
-    if (await confirmBox('Belgini olib tashlash?', 'Talaba «kelmadi» ro\'yxatiga o\'tadi.', 'Olib tashlash')) mark(+b.dataset.un, false);
-  });
-}
-document.querySelectorAll('#attSeg button').forEach(b => b.onclick = () => { haptic(); attView = b.dataset.v; renderAtt(); });
-async function mark(uid, present) { if (await act(`/api/admin/sessions/${current}/mark`, {user_id: uid, present}, present ? 'Keldi deb belgilandi' : 'Belgi olib tashlandi')) refreshSession(true); }
-
-async function refreshSession(force) {
-  if (!current) return;
-  const s = await api('/api/admin/sessions/' + current);
-  const prevIn = lastSession?.attendees.length;
-  lastSession = s;
-  $('qrTitle').textContent = s.title;
-  $('qrSub').textContent = `${s.group || 'Barcha talabalar'} · ${fmtDate(s.date)} ${s.time}` + (s.closed ? ' · yopilgan' : '');
-  $('qrCount').textContent = s.attendees.length; $('qrAbs').textContent = s.absent.length;
-  $('qrBox').classList.toggle('hidden', s.closed); $('qrClosed').classList.toggle('hidden', !s.closed);
-  $('closeBtn').textContent = s.closed ? '🔓 Qayta ochish' : '🔒 Yopish';
-  if (s.qr) {
-    if (!qr) qr = new QRCode($('qrBox'), {text: s.qr, width: 500, height: 500, colorDark: '#2a2850', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M});
-    else qr.makeCode(s.qr);
-  }
-  if (force || prevIn !== s.attendees.length) { if (prevIn != null && s.attendees.length > prevIn) haptic(); renderAtt(); }
-  return s;
-}
-async function openSession(id) {
-  current = id; qr = null; lastSession = null; attView = 'in'; $('qrBox').innerHTML = ''; $('attList').innerHTML = '';
-  openSheet('qrSheet');
-  try { const s = await refreshSession(true); startTimer(s.rotate || 10); } catch (e) { toast(e.message); }
-}
-function startTimer(rot) {
-  clearInterval(tickT); let left = rot;
-  const step = () => { $('qrTimer').textContent = lastSession?.closed ? '—' : left; $('ringBar').style.strokeDashoffset = 100 - left/rot*100; };
-  step();
-  tickT = setInterval(() => {
-    left--; if (left <= 0) left = rot;
-    if (left === rot || left % 3 === 0) refreshSession().catch(()=>{});
-    step();
-  }, 1000);
-}
-$('closeBtn').onclick = async () => {
-  const closed = !lastSession.closed;
-  if (await act(`/api/admin/sessions/${current}`, {closed}, closed ? 'Davomat yopildi' : 'Davomat qayta ochildi')) { qr = null; $('qrBox').innerHTML = ''; refreshSession(true); }
-};
-$('exportBtn').onclick = () => act(`/api/admin/sessions/${current}/export`);
-$('notifyBtn').onclick = async () => {
-  if (!lastSession.absent.length) return toast('Kelmaganlar yo\'q 🎉');
-  if (await confirmBox('Eslatma yuborilsinmi?', `${lastSession.absent.length} ta kelmagan talabaga bot orqali xabar boradi.`, 'Yuborish', ''))
-    act(`/api/admin/sessions/${current}/notify`);
-};
-$('delSessBtn').onclick = async () => {
-  if (await confirmBox('Darsni o\'chirish?', 'Bu darsning barcha davomat yozuvlari ham o\'chadi. Qaytarib bo\'lmaydi.', 'O\'chirish'))
-    if (await act(`/api/admin/sessions/${current}/delete`, {}, 'Dars o\'chirildi')) closeSheet('qrSheet');
-};
-
-/* ---- talabalar ---- */
-let studT = null;
-async function loadStudents() {
+/* ---- o'qituvchilar ---- */
+let tqT = null;
+async function loadTeachers() {
   try {
-    if (!$('studGroup').options.length) { await refreshGroups(); groupOptions($('studGroup'), {all:true, none:true, admins:true, allLabel:'Hamma foydalanuvchilar'}); }
-    const g = $('studGroup').value, qs = $('studQ').value.trim();
-    const r = await api('/api/admin/students?' + new URLSearchParams({group: g, q: qs}));
-    $('studCount').textContent = `${r.students.length} ta foydalanuvchi`;
-    $('studList').innerHTML = r.students.length ? r.students.map(u => `
-      <button class="row-i" data-uid="${u.id}">${av(u.full_name)}
-        <div class="mid"><b>${esc(u.full_name)}${u.is_admin?'<span class="tag admin">admin</span>':''}${!u.registered?'<span class="tag">yangi</span>':''}</b>
-        <small>${esc(u.group||'Guruhsiz')} · ${u.attended}/${u.total} dars${u.username?' · @'+esc(u.username):''}</small></div>
-        ${u.is_admin ? '' : `<span class="rate ${rateCls(u.total?u.rate:null)}">${u.total?u.rate+'%':'—'}</span>`}
-      </button>`).join('') : `<div class="empty">Hech kim topilmadi.<br>Talabalar botga /start bosganda shu yerda paydo bo'ladi.</div>`;
-    $('studList').querySelectorAll('[data-uid]').forEach(b => b.onclick = () => openStudent(+b.dataset.uid));
+    const r = await api('/api/admin/teachers?' + new URLSearchParams({q: $('tQ').value.trim()}));
+    $('tCount').textContent = `${r.teachers.length} ta foydalanuvchi`;
+    $('tList').innerHTML = r.teachers.length ? r.teachers.map(t => `
+      <button class="row-i" data-uid="${t.id}">${av(t.full_name)}
+        <div class="mid"><b>${esc(t.full_name)}${t.is_admin?'<span class="tag admin">admin</span>':''}${!t.registered?'<span class="tag">yangi</span>':''}${t.in_lesson?'<span class="tag" style="background:#d6fbe9;color:#18805c">darsda</span>':''}</b>
+        <small>${t.month.lessons} dars${t.month.forgot?` · ${t.month.forgot} ta chiqish yo'q`:''}${t.username?' · @'+esc(t.username):''}</small></div>
+        <time>${t.month.hours_text || '—'}</time></button>`).join('')
+      : `<div class="empty">Hech kim topilmadi.<br>O'qituvchilar botga /start bosganda shu yerda paydo bo'ladi.</div>`;
+    $('tList').querySelectorAll('[data-uid]').forEach(b => b.onclick = () => openTeacher(+b.dataset.uid));
   } catch (e) { toast(e.message); }
 }
-$('studQ').oninput = () => { clearTimeout(studT); studT = setTimeout(loadStudents, 300); };
-$('studGroup').onchange = loadStudents;
-
-async function openStudent(uid) {
-  curStudent = uid; openSheet('stSheet');
+$('tQ').oninput = () => { clearTimeout(tqT); tqT = setTimeout(loadTeachers, 300); };
+async function openTeacher(uid) {
+  curTeacher = uid; openSheet('tSheet');
   try {
-    if (!GROUPS.length) await refreshGroups();
-    const u = await api('/api/admin/students/' + uid);
-    const [a,b] = hue(u.full_name);
-    $('stAv').style.background = `linear-gradient(145deg,${a},${b})`; $('stAv').textContent = initials(u.full_name);
-    $('stName').textContent = u.full_name;
-    $('stSub').textContent = [u.group || 'Guruhsiz', u.username ? '@'+u.username : null, 'ID: '+u.id].filter(Boolean).join(' · ');
-    $('stCame').textContent = u.attended; $('stMiss').textContent = u.missed; $('stRate').textContent = u.total ? u.rate + '%' : '—';
-    $('stEditName').value = u.full_name;
-    groupOptions($('stEditGroup'), {all:true, allLabel:'— Guruhsiz —'}); $('stEditGroup').value = u.group_id || '';
-    stAdminOn = u.is_admin; $('stAdmin').classList.toggle('on', stAdminOn);
-    $('stHist').innerHTML = u.history.length ? u.history.map(h => `
-      <div class="row-i"><span class="av" style="background:${h.present?'linear-gradient(145deg,#5fe0b0,#25a97b)':'linear-gradient(145deg,#ff9bb0,#ef5b7b)'}">${h.present?'✓':'✕'}</span>
-        <div class="mid"><b>${esc(h.title)}</b><small>${fmtDate(h.date)} ${h.time} · ${h.present ? 'keldi ' + h.at + (h.manual?' (qo\'lda)':'') : 'kelmadi'}</small></div>
-        <button class="act-b" data-sid="${h.session_id}" data-p="${h.present?0:1}">${h.present ? I_X : I_OK}</button></div>`).join('')
-      : `<div class="empty">Darslar yo'q</div>`;
-    $('stHist').querySelectorAll('[data-sid]').forEach(b => b.onclick = async () => {
-      if (await act(`/api/admin/sessions/${b.dataset.sid}/mark`, {user_id: uid, present: b.dataset.p === '1'}, 'O\'zgartirildi')) openStudent(uid);
-    });
+    const t = await api('/api/admin/teachers/' + uid);
+    const [a,b] = hue(t.full_name);
+    $('tAv').style.background = `linear-gradient(145deg,${a},${b})`; $('tAv').textContent = initials(t.full_name);
+    $('tName').textContent = t.full_name;
+    $('tSub').textContent = [t.username ? '@'+t.username : null, 'ID: '+t.id, t.registered ? null : 'profil to\'ldirilmagan'].filter(Boolean).join(' · ');
+    $('tLes').textContent = t.month.lessons; $('tHrs').textContent = t.month.hours_text || '0'; $('tForgot').textContent = t.month.forgot;
+    $('tEditName').value = t.full_name; tAdminOn = t.is_admin; $('tAdmin').classList.toggle('on', tAdminOn);
+    $('tHist').innerHTML = t.history.length ? t.history.map(l => lessonRow({...l, full_name: t.full_name}, {admin:true})).join('') : `<div class="empty">Darslar yo'q</div>`;
+    $('tHist').querySelectorAll('[data-lid]').forEach(bt => bt.onclick = () => lessonMenu({...t.history.find(x => x.id == bt.dataset.lid), full_name: t.full_name}));
   } catch (e) { toast(e.message); }
 }
-$('stAdmin').onclick = () => { haptic(); stAdminOn = !stAdminOn; $('stAdmin').classList.toggle('on', stAdminOn); };
-$('stSave').onclick = async () => {
-  if (await act('/api/admin/students/' + curStudent, {full_name: $('stEditName').value, group_id: $('stEditGroup').value || null, is_admin: stAdminOn}, 'Saqlandi ✅')) openStudent(curStudent);
-};
-$('stDel').onclick = async () => {
-  if (await confirmBox('Foydalanuvchini o\'chirish?', 'Uning barcha davomat yozuvlari ham o\'chadi. Botga qayta kirsa, yangi foydalanuvchi bo\'lib qo\'shiladi.', 'O\'chirish'))
-    if (await act(`/api/admin/students/${curStudent}/delete`, {}, 'O\'chirildi')) closeSheet('stSheet');
+$('tAdmin').onclick = () => { haptic(); tAdminOn = !tAdminOn; $('tAdmin').classList.toggle('on', tAdminOn); };
+$('tSave').onclick = async () => { if (await act('/api/admin/teachers/' + curTeacher, {full_name: $('tEditName').value, is_admin: tAdminOn}, 'Saqlandi ✅')) openTeacher(curTeacher); };
+$('tDel').onclick = async () => {
+  if (await confirmBox('O\'qituvchini o\'chirish?', 'Uning barcha dars yozuvlari ham o\'chadi.', 'O\'chirish'))
+    if (await act(`/api/admin/teachers/${curTeacher}/delete`, {}, 'O\'chirildi')) closeSheet('tSheet');
 };
 
 /* ---- guruhlar ---- */
@@ -725,36 +753,93 @@ async function loadGroups() {
     $('grpCount').textContent = gs.length ? gs.length + ' ta' : '';
     $('grpList').innerHTML = gs.length ? gs.map(g => `
       <div class="row-i"><span class="av" style="background:linear-gradient(145deg,${hue(g.name)[0]},${hue(g.name)[1]})">🗂</span>
-        <div class="mid"><b>${esc(g.name)}</b><small>${g.members} talaba</small></div>
-        <button class="act-b" data-ren="${g.id}" title="Nomini o'zgartirish"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4b478a" stroke-width="2.2" stroke-linecap="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button>
-        <button class="act-b" data-del="${g.id}" title="O'chirish">${I_X}</button></div>`).join('')
-      : `<div class="empty">Guruhlar yo'q. Guruh qo'shsangiz, talabalar ro'yxatdan o'tishda o'z guruhini tanlaydi va «kim kelmadi» hisoblanadi.</div>`;
+        <div class="mid"><b>${esc(g.name)}</b><small>${g.lessons} ta dars o'tilgan</small></div>
+        <button class="act-b" data-ren="${g.id}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4b478a" stroke-width="2.2" stroke-linecap="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button>
+        <button class="act-b" data-del="${g.id}">${I_X}</button></div>`).join('') : `<div class="empty">Guruhlar yo'q</div>`;
     $('grpList').querySelectorAll('[data-ren]').forEach(b => b.onclick = async () => {
       const g = GROUPS.find(x => x.id == b.dataset.ren); const name = await promptBox('Guruh nomi', g.name);
       if (name && name.trim() && await act('/api/admin/groups', {id: g.id, name}, 'Saqlandi')) loadGroups();
     });
     $('grpList').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
       const g = GROUPS.find(x => x.id == b.dataset.del);
-      if (await confirmBox(`«${g.name}» o'chirilsinmi?`, 'Talabalar o\'chmaydi, faqat guruhsiz bo\'lib qoladi.', 'O\'chirish'))
-        if (await act(`/api/admin/groups/${g.id}/delete`, {}, 'Guruh o\'chirildi')) loadGroups();
+      if (await confirmBox(`«${g.name}» o'chirilsinmi?`, 'Darslar o\'chmaydi, faqat guruh nomi olib tashlanadi.', 'O\'chirish'))
+        if (await act(`/api/admin/groups/${g.id}/delete`, {}, 'O\'chirildi')) loadGroups();
     });
   } catch (e) { toast(e.message); }
 }
-$('addGrp').onclick = async () => { if (await act('/api/admin/groups', {name: $('newGrp').value}, 'Guruh qo\'shildi')) { $('newGrp').value = ''; loadGroups(); $('studGroup').innerHTML = ''; } };
+$('addGrp').onclick = async () => { if (await act('/api/admin/groups', {name: $('newGrp').value}, 'Guruh qo\'shildi')) { $('newGrp').value = ''; loadGroups(); $('jGroup').innerHTML = ''; } };
 
 /* ---- xabar ---- */
-async function fillMsg() {
-  await refreshGroups().catch(()=>{});
-  $('msgTarget').innerHTML = `<option value="all">📣 Barcha talabalarga</option><option value="unregistered">⚠️ Profilini to'ldirmaganlarga</option>` +
-    GROUPS.map(g => `<option value="${g.id}">🗂 ${esc(g.name)} (${g.members})</option>`).join('');
-}
 $('msgSend').onclick = async () => {
   const text = $('msgText').value.trim(); if (text.length < 2) return toast('Xabar matnini yozing');
-  const who = $('msgTarget').selectedOptions[0].textContent;
-  if (!await confirmBox('Xabar yuborilsinmi?', who, 'Yuborish', '')) return;
-  $('msgSend').disabled = true;
-  if (await act('/api/admin/broadcast', {target: $('msgTarget').value, text})) $('msgText').value = '';
-  $('msgSend').disabled = false;
+  if (!await confirmBox('Xabar yuborilsinmi?', $('msgTarget').selectedOptions[0].textContent, 'Yuborish', '')) return;
+  $('msgSend').disabled = true; if (await act('/api/admin/broadcast', {target: $('msgTarget').value, text})) $('msgText').value = ''; $('msgSend').disabled = false;
+};
+
+/* ---- sozlamalar ---- */
+let geoOn = true;
+function renderSettings(s) {
+  SET = s;
+  $('setLat').value = s.lat ?? ''; $('setLon').value = s.lon ?? '';
+  $('setRad').value = s.radius; $('radTxt').textContent = s.radius + ' m';
+  geoOn = s.required; $('setGeo').classList.toggle('on', geoOn);
+  $('setOrg').value = s.org_name; $('setMh').value = s.max_hours; $('mhTxt').textContent = s.max_hours + ' soat';
+  $('qrVer').textContent = 'versiya ' + s.qr_version;
+  if (s.configured) {
+    const d = Math.max(0.002, s.radius / 111000 * 1.6);
+    $('map').src = `https://www.openstreetmap.org/export/embed.html?bbox=${s.lon-d*1.4},${s.lat-d},${s.lon+d*1.4},${s.lat+d}&layer=mapnik&marker=${s.lat},${s.lon}`;
+    $('map').classList.remove('hidden');
+    $('locState').innerHTML = `<span class="li">✅</span><div>Lokatsiya kiritilgan<small>${s.lat}, ${s.lon} · radius ${s.radius} m${s.required?'':' · tekshiruv O\'CHIQ'}</small></div>`;
+  } else {
+    $('map').classList.add('hidden');
+    $('locState').innerHTML = `<span class="li">⚠️</span><div>Lokatsiya kiritilmagan<small>O'qituvchilar istalgan joydan belgilay oladi</small></div>`;
+  }
+  $('qrPrint').innerHTML = ''; new QRCode($('qrPrint'), {text: s.qr, width: 400, height: 400, colorDark: '#2a2850', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M});
+}
+async function loadSettings() {
+  try {
+    renderSettings(await api('/api/admin/settings'));
+    const st = await api('/api/admin/stats');
+    $('adminList').innerHTML = st.admins.map(a => `<button class="row-i" data-uid="${a.id}">${av(a.full_name)}<div class="mid"><b>${esc(a.full_name)}</b><small>${a.username ? '@'+esc(a.username) : 'ID: '+a.id}</small></div><span class="tag admin">admin</span></button>`).join('') +
+      `<div class="empty" style="padding:14px;font-size:13px">Admin qo'shish: «O'qituvchilar» bo'limida odamni ochib, «Admin huquqi»ni yoqing.</div>`;
+    $('adminList').querySelectorAll('[data-uid]').forEach(b => b.onclick = () => openTeacher(+b.dataset.uid));
+  } catch (e) { toast(e.message); }
+}
+$('setRad').oninput = () => $('radTxt').textContent = $('setRad').value + ' m';
+$('setMh').oninput = () => $('mhTxt').textContent = $('setMh').value + ' soat';
+$('setGeo').onclick = () => { haptic(); geoOn = !geoOn; $('setGeo').classList.toggle('on', geoOn); };
+$('useMyLoc').onclick = async () => {
+  toast('📍 Joylashuv aniqlanmoqda…');
+  try { const l = await getLocation(); $('setLat').value = l.lat.toFixed(6); $('setLon').value = l.lon.toFixed(6);
+        if (l.acc > 50) toast(`Aniqlik past (±${Math.round(l.acc)} m). Ochiq joyda qayta urinib ko'ring`); else toast('Aniqlandi. «Saqlash»ni bosing'); }
+  catch (e) { showResult(false, 'Joylashuv aniqlanmadi', e.message); }
+};
+$('saveGeo').onclick = async () => {
+  const lat = $('setLat').value.replace(',', '.').trim(), lon = $('setLon').value.replace(',', '.').trim();
+  const r = await act('/api/admin/settings', {lat, lon, radius: +$('setRad').value, geo_required: geoOn}, 'Lokatsiya saqlandi ✅');
+  if (r) { renderSettings(r); ME.geo = {configured: r.configured, required: r.required, radius: r.radius}; }
+};
+$('saveMisc').onclick = async () => { const r = await act('/api/admin/settings', {org_name: $('setOrg').value, max_hours: +$('setMh').value}, 'Saqlandi ✅'); if (r) renderSettings(r); };
+$('qrRotate').onclick = async () => {
+  if (!await confirmBox('Yangi QR yaratilsinmi?', 'Hozir osilgan QR kod ishlamay qoladi — yangisini chop etib almashtirishingiz kerak bo\'ladi.', 'Yaratish')) return;
+  const r = await act('/api/admin/qr/rotate', {}, 'Yangi QR yaratildi'); if (r) renderSettings(r);
+};
+$('qrSend').onclick = async () => {
+  // chop etish uchun chiroyli rasm tayyorlaymiz
+  const box = $('qrHidden'); box.innerHTML = '';
+  new QRCode(box, {text: SET.qr, width: 760, height: 760, colorDark: '#1e1c40', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H});
+  const src = box.querySelector('canvas');
+  const W = 1000, H = 1300, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#2a2850'; x.fillRect(0, 0, W, 190);
+  x.fillStyle = '#ffffff'; x.textAlign = 'center'; x.font = 'bold 54px Nunito, Arial'; x.fillText(SET.org_name, W/2, 95);
+  x.font = '600 34px Nunito, Arial'; x.fillStyle = '#cfc9ff'; x.fillText("O'qituvchilar davomati", W/2, 150);
+  x.drawImage(src, 120, 250, 760, 760);
+  x.fillStyle = '#2a2850'; x.font = 'bold 40px Nunito, Arial'; x.fillText('Darsga kirishda va chiqishda', W/2, 1095);
+  x.fillText('skanerlang 📲', W/2, 1150);
+  x.fillStyle = '#8c89ad'; x.font = '600 28px Nunito, Arial'; x.fillText('@' + (SET.qr.split('t.me/')[1] || '').split('?')[0], W/2, 1225);
+  $('qrSend').disabled = true; await act('/api/admin/qr/send', {image: c.toDataURL('image/png')}); $('qrSend').disabled = false;
 };
 
 /* ---------------- nav ---------------- */
@@ -775,34 +860,35 @@ $('navAdmin').onclick = () => { haptic(); show('admin'); };
   $('loading').classList.add('hidden'); $('nav').classList.remove('hidden');
   if (!ME.user.is_admin) $('navAdmin').classList.add('hidden');
   renderHome();
-  show(ME.user.is_admin ? 'admin' : 'home');
-  if (!ME.user.registered || (!ME.user.is_admin && GROUPS.length && !ME.user.group_id)) openReg();
-  const sp = tg?.initDataUnsafe?.start_param;
-  if (sp && sp.startsWith('c_')) doCheckin(sp);
+  show(ME.user.is_admin && !URL_CODE ? 'admin' : 'home');
+  if (!ME.user.registered) openReg();
+  else if (URL_CODE) handleCode(URL_CODE);
 })();
 
 /* ---------------- demo (brauzerda ?demo) ---------------- */
 function demoApi(path, body) {
-  const now = new Date(), d = n => ymd(new Date(now - n*864e5));
-  const G = [{id:1,name:'101-guruh',members:24},{id:2,name:'102-guruh',members:22},{id:3,name:'201-guruh',members:19}];
-  const names = ['Aliyev Vali','Karimova Aziza','Rahimov Bobur','Toshmatova Nilufar','Yusupov Sardor','Ergasheva Malika'];
-  if (path === '/api/me') return {user:{id:1,full_name:'Aziza Karimova',is_admin:true,registered:true,group_id:1,group:'101-guruh'},stats:{attended:17,total:20,missed:3,rate:85},groups:G,
-    history:[['Matematika',0,'09:02'],['Fizika',1,'10:15'],['Ingliz tili',1,'14:01'],['Tarix',2,'08:58'],['Informatika',4,'11:30'],['Kimyo',5,'09:10']].map(([t,n,tm])=>({title:t,date:d(n),time:tm}))};
+  const nowS = Date.now()/1000|0, d = n => ymd(new Date(Date.now() - n*864e5));
+  const T = (n, ago) => ({ts: nowS - ago, date: d(n), time: new Date((nowS-ago)*1000).toTimeString().slice(0,5)});
+  const L = (id, n, a, b, st, g, s, extra={}) => ({id, start: T(n,a), end: b!=null ? T(n,b) : null, status: st, group: g, subject: s, duration: a-(b??0), duration_text: durTxt(a-(b??0)), start_dist: 34, end_dist: 41, manual:false, ...extra});
+  const G = [{id:1,name:'101-guruh',lessons:12},{id:2,name:'102-guruh',lessons:9},{id:3,name:'201-guruh',lessons:15}];
+  const names = ['Aliyev Vali Karimovich','Karimova Aziza','Rahimov Bobur','Toshmatova Nilufar','Yusupov Sardor','Ergasheva Malika'];
+  if (path === '/api/me') return {user:{id:1,full_name:'Karimova Aziza Rustamovna',is_admin:true,registered:true}, org:'Arnasoy texnikumi', geo:{configured:true,required:true,radius:200},
+    open: L(5,0,1520,null,'open','101-guruh','Matematika'), last:{group_id:1,subject:'Matematika'}, server_time: nowS, groups: G,
+    today:[L(5,0,1520,null,'open','101-guruh','Matematika'), L(4,0,9000,4200,'done','102-guruh','Algebra')],
+    history:[L(3,1,30000,25200,'done','201-guruh','Geometriya'), L(2,1,40000,null,'forgot','101-guruh','Matematika'), L(1,2,30000,25000,'done','102-guruh','Algebra')],
+    days:[d(0),d(1),d(2),d(4),d(5),d(7)], month:{lessons:38,done:36,forgot:2,seconds:180000,hours_text:'50 soat 0 daq'}};
+  if (path === '/api/admin/stats') return {teachers:42, unregistered:2, geo:{configured:true}, today:{lessons:57,teachers:31,forgot:1,hours:61.5}, month_forgot:4,
+    now_in: names.slice(0,4).map((n,i)=>({...L(i,0,600+i*700,null,'open',G[i%3].name,['Fizika','Kimyo','Tarix','Ona tili'][i]), full_name:n})),
+    days:[38,52,0,61,55,49,57].map((x,i)=>({date:d(6-i),lessons:x})),
+    ranking: names.map((n,i)=>({id:i+2,full_name:n,lessons:40-i*3,forgot:i%3===2?1:0,hours_text:`${52-i*4} soat ${i*7} daq`})),
+    absent_today: names.slice(4).map((n,i)=>({id:i+9,full_name:n})), admins:[{id:1,full_name:'Karimova Aziza Rustamovna',username:'aziza'}]};
+  if (path.startsWith('/api/admin/teachers?') || path === '/api/admin/teachers') return {teachers: names.map((n,i)=>({id:i+2,full_name:n,username:'user'+i,is_admin:i===0,registered:i!==5,in_lesson:i<3,month:{lessons:40-i*3,forgot:i%3===2?1:0,hours_text:`${52-i*4} soat`}}))};
+  if (/^\/api\/admin\/teachers\/\d+$/.test(path) && !body) return {id:2,full_name:names[0],username:'vali',is_admin:false,registered:true,month:{lessons:38,forgot:1,hours_text:'49 soat 20 daq'},
+    history:[L(1,0,1800,null,'open','101-guruh','Fizika'), L(2,0,9000,4200,'done','102-guruh','Fizika'), L(3,1,40000,null,'forgot','201-guruh','Fizika'), L(4,1,30000,25200,'done','101-guruh','Fizika')]};
+  if (path.startsWith('/api/admin/lessons?')) return {lessons: names.map((n,i)=>({...L(i+1,0,600+i*2900, i%3===0?null:i*900, i%3===0?'open':i===4?'forgot':'done', G[i%3].name, ['Fizika','Kimyo','Tarix','Ona tili','Algebra','Biologiya'][i]), full_name:n}))};
   if (path === '/api/admin/groups') return {groups:G};
-  if (path === '/api/admin/stats') return {students:65,unregistered:3,groups_count:3,sessions_total:48,today:{sessions:3,came:52,expected:65,rate:80},
-    days:[72,85,0,90,64,88,80].map((r,i)=>({date:d(6-i),sessions:r?2:0,came:r,expected:r?100:0,rate:r||null})),
-    groups:G.map((g,i)=>({...g,sessions:16,rate:[91,74,46][i]})),
-    absentees:names.slice(0,4).map((n,i)=>({id:i+2,full_name:n,group:G[i%3].name,missed:6-i,rate:55+i*8})),
-    admins:[{id:1,full_name:'Aziza Karimova',username:'aziza'}]};
-  if (path.startsWith('/api/admin/sessions?') || path === '/api/admin/sessions' && !body) return {sessions:[['Matematika',23,24,0],['Fizika',18,22,0],['Informatika',19,19,1],['Tarix',0,24,0]].map(([t,c,e,cl],i)=>({id:i+1,title:t,count:c,expected:e,closed:!!cl,group:G[i%3].name,date:d(i),time:'09:00'}))};
-  if (/^\/api\/admin\/sessions\/\d+$/.test(path) && !body) return {title:'Matematika',group:'101-guruh',date:d(0),time:'09:00',closed:false,rotate:10,qr:'https://t.me/demo_bot?start=c_1-'+Date.now().toString(16)+'-abc',
-    attendees:names.slice(0,4).map((n,i)=>({id:i+2,full_name:n,username:'user'+i,group:'101-guruh',manual:i===3,time:'09:0'+i})),
-    absent:names.slice(4).map((n,i)=>({id:i+9,full_name:n,group:'101-guruh'}))};
-  if (path.startsWith('/api/admin/students?')) return {students:[{id:1,full_name:'Aziza Karimova',is_admin:true,registered:true,group:'101-guruh',attended:17,total:20,rate:85}]
-    .concat(names.map((n,i)=>({id:i+2,full_name:n,username:'user'+i,registered:i!==5,group:G[i%3].name,attended:20-i*3,total:20,rate:Math.round((20-i*3)/20*100)})))};
-  if (/^\/api\/admin\/students\/\d+$/.test(path) && !body) return {id:2,full_name:'Aliyev Vali',username:'vali',group_id:1,group:'101-guruh',is_admin:false,attended:14,missed:4,total:18,rate:78,
-    history:['Matematika','Fizika','Tarix','Kimyo'].map((t,i)=>({session_id:i+1,title:t,date:d(i),time:'09:00',present:i!==1,manual:i===2,at:'09:0'+i}))};
-  return {ok:true,message:'Demo rejim ✅', id:1, title:'Demo'};
+  if (path === '/api/admin/settings' || path.startsWith('/api/admin/settings') || path === '/api/admin/qr/rotate') return {lat:40.1268,lon:67.8422,radius:200,required:true,configured:true,org_name:'Arnasoy texnikumi',max_hours:4,qr:'https://t.me/Arnasoy_Texnikum_Davomatbot?start=t_1_abcdef',qr_version:1};
+  return {ok:true, message:'Demo rejim ✅', full_name:'Demo'};
 }
 </script>
 </body>
