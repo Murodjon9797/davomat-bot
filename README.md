@@ -5,6 +5,13 @@
 2. **Talaba** ilovadagi markaziy tugma bilan QR ni skanerlaydi (yoki oddiy telefon kamerasi bilan — bot ochilib, davomat avtomatik belgilanadi).
 3. Admin ekranida kelganlar ro'yxati jonli yangilanadi, «CSV» tugmasi Excel'da ochiladigan hisobotni botga yuboradi.
 
+### Admin panel (ilovadagi 🛡 tugma)
+- **Statistika** — talabalar, guruhlar, bugungi davomat %, 7 kunlik grafik, guruhlar reytingi, eng ko'p qoldirganlar, sana oralig'i bo'yicha Excel hisobot, adminlar ro'yxati.
+- **Darslar** — guruh uchun dars yaratish, jonli QR, «keldi / kelmadi» ro'yxati, qo'lda belgilash yoki belgini olib tashlash, Excel, kelmaganlarga eslatma, yopish/ochish, o'chirish.
+- **Talabalar** — qidiruv, guruh bo'yicha filtr, har bir talabaning foizi va tarixi, ismi/guruhini tahrirlash, admin qilish, o'chirish.
+- **Guruhlar** — qo'shish, nomini o'zgartirish, o'chirish.
+- **Xabar** — hammaga, guruhga yoki profilini to'ldirmaganlarga bot orqali xabar.
+
 Birinchi marta botga `/start` bosgan odam avtomatik admin bo'ladi (yoki `.env` dagi `ADMIN_IDS`).
 Boshqa admin qo'shish: `/addadmin 123456789`. O'z ID ingizni bilish: `/id`.
 
