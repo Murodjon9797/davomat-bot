@@ -343,13 +343,28 @@ async def close_stale():
             pass
 
 
-def user_month_stats(uid: int) -> dict:
-    m0 = day_start(datetime.now(TZ).replace(day=1))
-    rows = q("SELECT * FROM lessons WHERE user_id=? AND start_ts>=?", uid, m0)
+def _month_stats(rows) -> dict:
     done = [r for r in rows if r["status"] == "done"]
     secs = sum(r["end_ts"] - r["start_ts"] for r in done)
     return {"lessons": len(rows), "done": len(done), "forgot": sum(r["status"] == "forgot" for r in rows),
             "seconds": secs, "hours_text": dur_text(secs)}
+
+
+def user_month_stats(uid: int) -> dict:
+    m0 = day_start(datetime.now(TZ).replace(day=1))
+    return _month_stats(q("SELECT status, start_ts, end_ts FROM lessons WHERE user_id=? AND start_ts>=?", uid, m0))
+
+
+def all_month_stats() -> dict:
+    """Barcha o'qituvchilar uchun oylik statistika — bitta so'rov bilan."""
+    m0 = day_start(datetime.now(TZ).replace(day=1))
+    by_user: dict[int, list] = {}
+    for r in q("SELECT user_id, status, start_ts, end_ts FROM lessons WHERE start_ts>=?", m0):
+        by_user.setdefault(r["user_id"], []).append(r)
+    return {uid: _month_stats(rows) for uid, rows in by_user.items()}
+
+
+EMPTY_STATS = _month_stats([])
 
 
 # ---------------------------------------------------------------- Telegram initData
@@ -592,15 +607,17 @@ async def api_stats(request):
     now_in = q("SELECT l.*, u.full_name FROM lessons l JOIN users u ON u.id=l.user_id WHERE l.status='open' ORDER BY l.start_ts")
     today = q("SELECT * FROM lessons WHERE start_ts>=?", t0)
     days = []
+    week = q("SELECT user_id, status, start_ts, end_ts FROM lessons WHERE start_ts>=?", t0 - 6 * 86400)
     for i in range(6, -1, -1):
         d0 = t0 - i * 86400
-        rows = q("SELECT * FROM lessons WHERE start_ts>=? AND start_ts<?", d0, d0 + 86400)
+        rows = [r for r in week if d0 <= r["start_ts"] < d0 + 86400]
         days.append({"date": fmt_dt(d0, "%Y-%m-%d"), "lessons": len(rows),
                      "teachers": len({r["user_id"] for r in rows}),
                      "hours": round(sum((r["end_ts"] - r["start_ts"]) for r in rows if r["status"] == "done") / 3600, 1)})
     ranking = []
+    ms = all_month_stats()
     for t in teachers:
-        s = user_month_stats(t["id"])
+        s = ms.get(t["id"], EMPTY_STATS)
         if s["lessons"]:
             ranking.append({"id": t["id"], "full_name": t["full_name"], **s})
     ranking.sort(key=lambda x: -x["seconds"])
@@ -678,12 +695,14 @@ async def api_teachers(request):
     qs = (request.query.get("q") or "").strip().lower()
     rows = q("SELECT * FROM users ORDER BY lower(full_name)")
     out = []
+    ms = all_month_stats()
+    in_lesson = {r["user_id"] for r in q("SELECT user_id FROM lessons WHERE status='open'")}
     for u in rows:
         if qs and qs not in (u["full_name"] or "").lower() and qs not in (u["username"] or "").lower() and qs != str(u["id"]):
             continue
-        ol = open_lesson(u["id"])
         out.append({"id": u["id"], "full_name": u["full_name"], "username": u["username"], "is_admin": bool(u["is_admin"]),
-                    "registered": bool(u["registered"]), "in_lesson": bool(ol), "month": user_month_stats(u["id"])})
+                    "registered": bool(u["registered"]), "in_lesson": u["id"] in in_lesson,
+                    "month": ms.get(u["id"], EMPTY_STATS)})
     return web.json_response({"teachers": out})
 
 
