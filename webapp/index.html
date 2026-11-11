@@ -1016,15 +1016,15 @@ if (TG_FS) {
   $('fsBtn').onclick = () => goFullscreen(!tg.isFullscreen);
   $('fsFloat').onclick = () => goFullscreen(true);
   tg.onEvent?.('fullscreenChanged', fsUi);
-  tg.onEvent?.('fullscreenFailed', e => { if (e?.error !== 'ALREADY_FULLSCREEN') toast('To'liq ekran rejimi bu Telegram versiyasida ishlamadi'); });
+  tg.onEvent?.('fullscreenFailed', e => { if (e?.error !== 'ALREADY_FULLSCREEN') toast("To'liq ekran rejimi bu Telegram versiyasida ishlamadi"); });
   addEventListener('resize', fsUi);
   fsUi();
   // Telegram Desktop'da ilova o'zi kattalashadi
   if (IS_DESKTOP && !tg.isFullscreen) setTimeout(() => goFullscreen(true), 150);
 } else if (IS_DESKTOP) {
-  $('fsFloat').textContent = 'Telegram'ni yangilang — to'liq ekran uchun';
+  $('fsFloat').textContent = "Telegram'ni yangilang — to'liq ekran uchun";
   $('fsFloat').classList.toggle('hidden', innerWidth >= 760);
-  $('fsFloat').onclick = () => toast('Telegram Desktop'ni oxirgi versiyaga yangilang');
+  $('fsFloat').onclick = () => toast("Telegram Desktop'ni oxirgi versiyaga yangilang");
 }
 $('openKiosk').onclick = openKiosk;
 $('kExit').onclick = () => closeKiosk();
