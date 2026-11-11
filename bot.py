@@ -63,44 +63,88 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("davomat")
 
 # ---------------------------------------------------------------- DB
-db = sqlite3.connect(DB_PATH, check_same_thread=False)
-db.row_factory = sqlite3.Row
-db.executescript(
-    """
-    PRAGMA journal_mode=WAL;
-    CREATE TABLE IF NOT EXISTS users(
-        id INTEGER PRIMARY KEY,
-        full_name TEXT,
-        username TEXT,
-        is_admin INTEGER DEFAULT 0,
-        registered INTEGER DEFAULT 0,
-        created_at INTEGER
-    );
-    CREATE TABLE IF NOT EXISTS groups(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        created_at INTEGER
-    );
-    CREATE TABLE IF NOT EXISTS lessons(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        group_id INTEGER,
-        subject TEXT,
-        start_ts INTEGER NOT NULL,
-        end_ts INTEGER,
-        start_dist INTEGER,
-        end_dist INTEGER,
-        start_lat REAL, start_lon REAL,
-        end_lat REAL, end_lon REAL,
-        status TEXT DEFAULT 'open',      -- open | done | forgot
-        manual INTEGER DEFAULT 0          -- admin tomonidan o'zgartirilgan
-    );
-    CREATE INDEX IF NOT EXISTS ix_lessons_user ON lessons(user_id, start_ts);
-    CREATE INDEX IF NOT EXISTS ix_lessons_start ON lessons(start_ts);
-    CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
-    """
-)
-db.commit()
+# DATABASE_URL berilsa — PostgreSQL (Neon va h.k., ma'lumotlar saqlanib qoladi),
+# aks holda lokal SQLite fayl (davomat.db).
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+PG = DATABASE_URL.startswith(("postgres://", "postgresql://"))
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS users(
+    id BIGINT PRIMARY KEY,
+    full_name TEXT,
+    username TEXT,
+    is_admin INTEGER DEFAULT 0,
+    registered INTEGER DEFAULT 0,
+    created_at BIGINT
+);
+CREATE TABLE IF NOT EXISTS groups(
+    id {serial},
+    name TEXT NOT NULL,
+    created_at BIGINT
+);
+CREATE TABLE IF NOT EXISTS lessons(
+    id {serial},
+    user_id BIGINT NOT NULL,
+    group_id INTEGER,
+    subject TEXT,
+    start_ts BIGINT NOT NULL,
+    end_ts BIGINT,
+    start_dist INTEGER,
+    end_dist INTEGER,
+    start_lat {real}, start_lon {real},
+    end_lat {real}, end_lon {real},
+    status TEXT DEFAULT 'open',
+    manual INTEGER DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS ix_lessons_user ON lessons(user_id, start_ts);
+CREATE INDEX IF NOT EXISTS ix_lessons_start ON lessons(start_ts);
+CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
+"""
+
+if PG:
+    import psycopg
+    from psycopg.rows import dict_row
+
+    _pg = None
+
+    def _conn():
+        global _pg
+        if _pg is None or _pg.closed:
+            _pg = psycopg.connect(DATABASE_URL, autocommit=True, row_factory=dict_row, connect_timeout=15)
+        return _pg
+
+    def _exec(sql, args):
+        sql = sql.replace("?", "%s")
+        for attempt in (1, 2):
+            try:
+                return _conn().execute(sql, args)
+            except psycopg.OperationalError:
+                # Neon bo'sh turganda ulanishni uzadi — qayta ulanamiz
+                global _pg
+                try:
+                    _pg and _pg.close()
+                except Exception:
+                    pass
+                _pg = None
+                if attempt == 2:
+                    raise
+
+    for stmt in SCHEMA.format(serial="SERIAL PRIMARY KEY", real="DOUBLE PRECISION").split(";"):
+        if stmt.strip():
+            _exec(stmt, ())
+    log.info("Baza: PostgreSQL")
+else:
+    db = sqlite3.connect(DB_PATH, check_same_thread=False)
+    db.row_factory = sqlite3.Row
+    db.executescript("PRAGMA journal_mode=WAL;" + SCHEMA.format(serial="INTEGER PRIMARY KEY AUTOINCREMENT", real="REAL"))
+    db.commit()
+
+    def _exec(sql, args):
+        cur = db.execute(sql, args)
+        db.commit()
+        return cur
+
+    log.info("Baza: SQLite (%s)", DB_PATH)
 
 DEFAULTS = {
     "org_name": "Texnikum",
@@ -113,17 +157,22 @@ DEFAULTS = {
 
 
 def q(sql, *args):
-    return db.execute(sql, args).fetchall()
+    return _exec(sql, args).fetchall()
 
 
 def q1(sql, *args):
-    return db.execute(sql, args).fetchone()
+    return _exec(sql, args).fetchone()
 
 
 def run(sql, *args):
-    cur = db.execute(sql, args)
-    db.commit()
-    return cur
+    return _exec(sql, args)
+
+
+def insert(sql, *args) -> int:
+    """INSERT qiladi va yangi yozuv id sini qaytaradi."""
+    if PG:
+        return _exec(sql + " RETURNING id", args).fetchone()["id"]
+    return _exec(sql, args).lastrowid
 
 
 def setting(key: str) -> str:
@@ -458,9 +507,8 @@ async def api_me(request):
     t0 = day_start()
     today = q("SELECT * FROM lessons WHERE user_id=? AND start_ts>=? ORDER BY start_ts DESC", u["id"], t0)
     hist = q("SELECT * FROM lessons WHERE user_id=? AND start_ts<? ORDER BY start_ts DESC LIMIT 30", u["id"], t0)
-    days = [r["d"] for r in q(
-        "SELECT DISTINCT strftime('%Y-%m-%d', start_ts + ?, 'unixepoch') d FROM lessons WHERE user_id=? AND start_ts>=?",
-        int(TZ.utcoffset(None).total_seconds()), u["id"], t0 - 14 * 86400)]
+    days = sorted({fmt_dt(r["start_ts"], "%Y-%m-%d") for r in q(
+        "SELECT start_ts FROM lessons WHERE user_id=? AND start_ts>=?", u["id"], t0 - 14 * 86400)})
     ol = open_lesson(u["id"])
     last = q1("SELECT group_id, subject FROM lessons WHERE user_id=? ORDER BY start_ts DESC LIMIT 1", u["id"])
     g = geo_conf()
@@ -506,9 +554,9 @@ async def api_scan(request):
         if ol:
             return jerr("Sizda tugallanmagan dars bor. Avval darsdan chiqishni belgilang")
         gid = opt_int(b.get("group_id"))
-        cur = run("""INSERT INTO lessons(user_id, group_id, subject, start_ts, start_dist, start_lat, start_lon)
-                     VALUES(?,?,?,?,?,?,?)""", u["id"], gid, clean(b.get("subject"), 60), now(), dist, lat, lon)
-        les = q1("SELECT * FROM lessons WHERE id=?", cur.lastrowid)
+        lid = insert("""INSERT INTO lessons(user_id, group_id, subject, start_ts, start_dist, start_lat, start_lon)
+                        VALUES(?,?,?,?,?,?,?)""", u["id"], gid, clean(b.get("subject"), 60), now(), dist, lat, lon)
+        les = q1("SELECT * FROM lessons WHERE id=?", lid)
         return web.json_response({"ok": True, "message": f"Darsga kirish qayd etildi: {fmt_dt(les['start_ts'], '%H:%M')}",
                                   "lesson": lesson_dict(les)})
     if action == "end":
@@ -617,7 +665,7 @@ async def api_lesson_delete(request):
 # ---------- admin: o'qituvchilar
 async def api_teachers(request):
     qs = (request.query.get("q") or "").strip().lower()
-    rows = q("SELECT * FROM users ORDER BY full_name COLLATE NOCASE")
+    rows = q("SELECT * FROM users ORDER BY lower(full_name)")
     out = []
     for u in rows:
         if qs and qs not in (u["full_name"] or "").lower() and qs not in (u["username"] or "").lower() and qs != str(u["id"]):
@@ -681,12 +729,12 @@ async def api_group_save(request):
     if not name:
         return jerr("Guruh nomini kiriting")
     gid = opt_int(b.get("id"))
-    if q1("SELECT 1 FROM groups WHERE lower(name)=lower(?) AND id IS NOT ?", name, gid):
+    if any(r["id"] != gid for r in q("SELECT id FROM groups WHERE lower(name)=lower(?)", name)):
         return jerr("Bunday guruh bor")
     if gid:
         run("UPDATE groups SET name=? WHERE id=?", name, gid)
     else:
-        gid = run("INSERT INTO groups(name, created_at) VALUES(?,?)", name, now()).lastrowid
+        gid = insert("INSERT INTO groups(name, created_at) VALUES(?,?)", name, now())
     return web.json_response({"ok": True, "id": gid, "name": name})
 
 
