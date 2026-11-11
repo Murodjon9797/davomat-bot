@@ -16,15 +16,11 @@ Oddiy telefon kamerasi bilan skanerlansa ham ishlaydi: bot ochiladi va «📍 Ta
 - **Xabar** — hammaga, bugun dars belgilamaganlarga yoki profilini to'ldirmaganlarga.
 - **Sozlamalar** — texnikum lokatsiyasi (xarita, «Hozirgi joyimni olish», radius), lokatsiya tekshiruvini yoqish/o'chirish, muassasa nomi, dars yopilish vaqti, QR kodni chop etish uchun rasm qilib olish va yangilash.
 
-## Kompyuter versiyasi
-Brauzerda https://davomat-bot-4ci8.onrender.com ni oching → Telegram username yoki ID → botga kelgan 6 xonali kod. Faqat adminlar kira oladi, kirish 180 kun eslab qolinadi.
-
-- **Admin panel** — telefondagi bilan bir xil, keng ekranga moslangan.
-- **📺 Ekran rejimi** — kirish joyidagi monitor uchun: katta QR kod, soat, «hozir darsda» ro'yxati, so'nggi harakatlar; kimdir kirsa/chiqsa ekranda katta xabar chiqadi. Har 10 soniyada yangilanadi.
-
-**Avtomatik ochilish (Windows):** `kompyuter` papkasini kompyuterga ko'chirib, `ornatish.bat` ni ikki marta bosing va tanlang:
-1 — ekran rejimi, 2 — admin panel, 3 — faqat yorliq. Ish stolida «Davomat admin» va «Davomat ekrani» yorliqlari paydo bo'ladi.
-Hech narsa yuklab olinmaydi — Windows'dagi Microsoft Edge ilova oynasi rejimida ishlaydi. O'chirish: `ochirish.bat`.
+## Kompyuterda (Telegram Desktop)
+Mini ilova Telegram Desktop'da ham ochiladi va keng oynaga moslashadi: o'qituvchi sahifasi ikki ustunli,
+admin panel keng jadvallar bilan. Admin uchun yuqorida «📺 Ekran rejimi» (katta QR, soat, «hozir darsda»,
+so'nggi harakatlar — kirish joyidagi monitor uchun) va «⛶ To'liq ekran» tugmalari bor.
+Darsga kirish/chiqishni skanerlash telefonda qilinadi (kamera va GPS kerak).
 
 Birinchi marta botga `/start` bosgan odam avtomatik admin bo'ladi (yoki `ADMIN_IDS`).
 O'z ID ingizni bilish: `/id`.

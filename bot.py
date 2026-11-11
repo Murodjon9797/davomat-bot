@@ -98,13 +98,6 @@ db.executescript(
     CREATE INDEX IF NOT EXISTS ix_lessons_user ON lessons(user_id, start_ts);
     CREATE INDEX IF NOT EXISTS ix_lessons_start ON lessons(start_ts);
     CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
-    -- kompyuter versiyasi uchun: bot orqali yuboriladigan kirish kodlari va sessiyalar
-    CREATE TABLE IF NOT EXISTS auth_codes(
-        user_id INTEGER PRIMARY KEY, code_hash TEXT, expires INTEGER, attempts INTEGER DEFAULT 0
-    );
-    CREATE TABLE IF NOT EXISTS web_sessions(
-        token_hash TEXT PRIMARY KEY, user_id INTEGER, created INTEGER, expires INTEGER, agent TEXT
-    );
     """
 )
 db.commit()
@@ -425,45 +418,15 @@ def jerr(msg, status=400):
     return web.json_response({"error": msg}, status=status)
 
 
-def sha(s: str) -> str:
-    return hashlib.sha256(s.encode()).hexdigest()
-
-
-SESSION_DAYS = 180
-
-
-def session_user(token: str):
-    if not token:
-        return None
-    r = q1("SELECT * FROM web_sessions WHERE token_hash=? AND expires>?", sha(token), now())
-    if not r:
-        return None
-    u = q1("SELECT * FROM users WHERE id=?", r["user_id"])
-    return u if u and u["is_admin"] else None
-
-
 @web.middleware
 async def auth_mw(request: web.Request, handler):
-    if request.path.startswith("/auth/"):
-        try:
-            return await handler(request)
-        except (ValueError, KeyError, TypeError, json.JSONDecodeError):
-            return jerr("Noto'g'ri so'rov")
     if not request.path.startswith("/api/"):
         return await handler(request)
-    sess =request.headers.get("X-Session", "")
-    if sess:
-        # kompyuter versiyasi (brauzer) — faqat adminlar
-        u = session_user(sess)
-        if not u:
-            return jerr("Sessiya tugagan. Qaytadan kiring", 401)
-        request["user"] = u
-    else:
-        tg_user = validate_init_data(request.headers.get("X-Init-Data", ""))
-        if not tg_user or "id" not in tg_user:
-            return jerr("Ilovani Telegram ichidan oching", 401)
-        name = " ".join(x for x in (tg_user.get("first_name"), tg_user.get("last_name")) if x)
-        request["user"] = upsert_user(tg_user["id"], name or str(tg_user["id"]), tg_user.get("username"))
+    tg_user = validate_init_data(request.headers.get("X-Init-Data", ""))
+    if not tg_user or "id" not in tg_user:
+        return jerr("Ilovani Telegram ichidan oching", 401)
+    name = " ".join(x for x in (tg_user.get("first_name"), tg_user.get("last_name")) if x)
+    request["user"] = upsert_user(tg_user["id"], name or str(tg_user["id"]), tg_user.get("username"))
     if request.path.startswith("/api/admin/") and not request["user"]["is_admin"]:
         return jerr("Faqat admin uchun", 403)
     await close_stale()
@@ -821,74 +784,8 @@ async def api_broadcast(request):
     return web.json_response({"ok": True, "message": f"{ok} kishiga yuborildi" + (f", {fail} tasiga yetmadi" if fail else "")})
 
 
-# ---------- kompyuter versiyasi: bot orqali kod bilan kirish
-def find_admin(login: str):
-    login = str(login or "").strip().lstrip("@")
-    if not login:
-        return None
-    if login.isdigit():
-        u = q1("SELECT * FROM users WHERE id=?", int(login))
-    else:
-        u = q1("SELECT * FROM users WHERE lower(username)=lower(?)", login)
-    return u if u and u["is_admin"] else None
-
-
-async def auth_request(request):
-    b = await body(request)
-    u = find_admin(b.get("login"))
-    if not u:
-        return jerr("Admin topilmadi. Telegram username yoki ID ni tekshiring (botga /id yuborib bilasiz)")
-    old = q1("SELECT * FROM auth_codes WHERE user_id=?", u["id"])
-    if old and old["expires"] - 270 > now():   # 30 soniyada bir martadan ko'p emas
-        return jerr("Kod yaqinda yuborildi. Telegramni tekshiring yoki 30 soniyadan keyin qayta urining")
-    code = f"{int.from_bytes(os.urandom(4), 'big') % 1000000:06d}"
-    run("INSERT OR REPLACE INTO auth_codes(user_id, code_hash, expires, attempts) VALUES(?,?,?,0)",
-        u["id"], sha(f"{u['id']}:{code}"), now() + 300)
-    try:
-        await bot.send_message(u["id"], f"💻 Kompyuter versiyasiga kirish kodi: <code>{code}</code>\n\n"
-                                         f"Kod 5 daqiqa amal qiladi. Agar siz so'ramagan bo'lsangiz, e'tibor bermang.",
-                               parse_mode="HTML")
-    except Exception:
-        return jerr("Kodni yuborib bo'lmadi. Botga /start bosing va qayta urining")
-    return web.json_response({"ok": True, "message": "Kod Telegram'ga yuborildi"})
-
-
-async def auth_verify(request):
-    b = await body(request)
-    u = find_admin(b.get("login"))
-    code = str(b.get("code", "")).strip()
-    r = q1("SELECT * FROM auth_codes WHERE user_id=?", u["id"]) if u else None
-    if not r or r["expires"] < now():
-        return jerr("Kod eskirgan. Yangi kod so'rang")
-    if r["attempts"] >= 5:
-        return jerr("Urinishlar ko'p bo'ldi. Yangi kod so'rang")
-    if not hmac.compare_digest(r["code_hash"], sha(f"{u['id']}:{code}")):
-        run("UPDATE auth_codes SET attempts=attempts+1 WHERE user_id=?", u["id"])
-        return jerr("Kod noto'g'ri")
-    run("DELETE FROM auth_codes WHERE user_id=?", u["id"])
-    token = base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip("=")
-    run("INSERT INTO web_sessions(token_hash, user_id, created, expires, agent) VALUES(?,?,?,?,?)",
-        sha(token), u["id"], now(), now() + SESSION_DAYS * 86400, request.headers.get("User-Agent", "")[:200])
-    try:
-        await bot.send_message(u["id"], "🔐 Kompyuter versiyasiga kirildi. Agar bu siz bo'lmasangiz, admin paneldan «Barcha kompyuterlardan chiqish»ni bosing.")
-    except Exception:
-        pass
-    return web.json_response({"ok": True, "token": token})
-
-
-async def api_logout(request):
-    if request.headers.get("X-Session"):
-        run("DELETE FROM web_sessions WHERE token_hash=?", sha(request.headers["X-Session"]))
-    return web.json_response({"ok": True})
-
-
-async def api_logout_all(request):
-    n = run("DELETE FROM web_sessions WHERE user_id=?", request["user"]["id"]).rowcount
-    return web.json_response({"ok": True, "message": f"{n} ta kompyuterdan chiqildi"})
-
-
 async def api_screen(request):
-    """Ekran (kiosk) rejimi uchun: QR, hozir darsdagilar, bugungi so'nggi harakatlar."""
+    """Ekran rejimi (Telegram Desktop, katta monitor) uchun: QR, hozir darsdagilar, bugungi so'nggi harakatlar."""
     t0 = day_start()
     now_in = q("SELECT l.*, u.full_name FROM lessons l JOIN users u ON u.id=l.user_id WHERE l.status='open' ORDER BY l.start_ts DESC")
     rows = q("SELECT l.*, u.full_name FROM lessons l JOIN users u ON u.id=l.user_id WHERE l.start_ts>=? OR l.end_ts>=?", t0, t0)
@@ -921,10 +818,6 @@ def build_app() -> web.Application:
     r.add_get("/health", lambda req: web.Response(text="ok"))
     r.add_get("/api/me", api_me)
     r.add_post("/api/register", api_register)
-    r.add_post("/auth/request", auth_request)
-    r.add_post("/auth/verify", auth_verify)
-    r.add_post("/api/logout", api_logout)
-    r.add_post("/api/admin/logout-all", api_logout_all)
     r.add_get("/api/admin/screen", api_screen)
     r.add_post("/api/scan", api_scan)
     r.add_get("/api/admin/stats", api_stats)
