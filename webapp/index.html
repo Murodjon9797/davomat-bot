@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Davomat</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e4e3f1; --bg2:#eceaf6; --surface:#efeef8;
+  --navy:#2a2850; --navy2:#3a3770; --navy3:#4b478a;
+  --ink:#2b2950; --muted:#8c89ad; --accent:#6c63ff; --accent2:#9d8cff;
+  --ok:#3fbf8f; --bad:#ff6b8a;
+  --sh-out: 8px 8px 18px rgba(130,125,180,.35), -8px -8px 18px rgba(255,255,255,.85);
+  --sh-in: inset 4px 4px 10px rgba(130,125,180,.3), inset -4px -4px 10px rgba(255,255,255,.9);
+  --sh-dark: 6px 6px 14px rgba(10,8,40,.45), -4px -4px 12px rgba(90,85,160,.25);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Nunito,system-ui,sans-serif;min-height:100%}
+body{overflow-x:hidden}
+button{font:inherit;border:0;cursor:pointer;color:inherit;background:none}
+input{font:inherit}
+.app{max-width:480px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:120px}
+
+/* ---------- dark hero (top) ---------- */
+.hero{background:linear-gradient(160deg,var(--navy2),var(--navy) 70%);color:#fff;padding:14px 18px 70px;position:relative;border-radius:0 0 0 0}
+.topbar{display:flex;align-items:center;justify-content:space-between;height:44px}
+.ibtn{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;color:#d8d5ff}
+.notch{position:absolute;left:50%;top:0;transform:translateX(-50%);width:120px;height:58px;background:var(--bg);border-radius:0 0 40px 40px;display:grid;place-items:center}
+.avatar{width:42px;height:42px;border-radius:50%;background:var(--surface);box-shadow:3px 3px 8px rgba(130,125,180,.35),-3px -3px 8px rgba(255,255,255,.9);display:grid;place-items:center;font-weight:800;color:var(--navy2);font-size:16px;margin-top:-4px}
+.pill{margin-top:20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:11px 16px;font-size:14px;color:#c9c6f2;display:flex;justify-content:space-between;align-items:center;box-shadow:inset 2px 2px 6px rgba(0,0,0,.25)}
+.card{margin-top:18px;border-radius:26px;padding:20px;background:linear-gradient(145deg,#353269,#24224a);box-shadow:var(--sh-dark);border:1px solid rgba(255,255,255,.06)}
+.card-h{display:flex;gap:14px;align-items:center}
+.logo{width:48px;height:48px;border-radius:15px;background:linear-gradient(145deg,#2b2955,#1c1a3c);box-shadow:inset 2px 2px 5px rgba(0,0,0,.4),2px 2px 8px rgba(0,0,0,.3);display:grid;place-items:center}
+.card h1{margin:0;font-size:24px;font-weight:800;letter-spacing:.2px}
+.card .sub{color:#a5a2d6;font-size:13px;margin-top:2px}
+.bar{margin-top:22px;height:7px;border-radius:9px;background:rgba(0,0,0,.35);overflow:hidden;box-shadow:inset 1px 1px 3px rgba(0,0,0,.5)}
+.bar i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,#6c63ff,#a99bff);box-shadow:0 0 12px #8a7dff;transition:width .8s ease}
+.bar-l{display:flex;justify-content:space-between;font-size:12px;color:#a5a2d6;margin-top:8px}
+
+/* wave divider: dark -> light */
+.wave{display:block;width:100%;height:70px;margin-top:-69px;position:relative}
+
+/* ---------- light content ---------- */
+.content{padding:4px 20px 0}
+.sec-h{display:flex;align-items:center;justify-content:space-between;margin:10px 4px 16px;color:var(--muted);font-weight:700;font-size:14px}
+.sec-h span{display:flex;gap:8px;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px 14px}
+.tile{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;min-width:0}
+.tile .ic{width:76px;height:76px;border-radius:24px;background:var(--surface);box-shadow:var(--sh-out);display:grid;place-items:center;transition:transform .15s}
+.tile:active .ic{box-shadow:var(--sh-in);transform:scale(.97)}
+.tile b{font-size:13.5px;font-weight:700;color:var(--ink);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile small{font-size:11px;color:var(--muted);margin-top:-6px}
+.empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:26px 10px;border-radius:24px;box-shadow:var(--sh-in);font-size:14px;line-height:1.5}
+
+/* date strip (dark bottom panel) */
+.dark-panel{margin:30px 0 0;background:linear-gradient(170deg,var(--navy2),var(--navy));border-radius:30px;padding:22px 0 22px 18px;color:#fff;position:relative;overflow:hidden}
+.dark-panel h3{margin:0 0 14px;font-size:14px;color:#a5a2d6;font-weight:700}
+.days{display:flex;gap:12px;overflow-x:auto;padding:4px 18px 8px 2px;scrollbar-width:none}
+.days::-webkit-scrollbar{display:none}
+.day{flex:0 0 46px;height:96px;border-radius:24px;background:linear-gradient(180deg,#46428a,#2f2c62);box-shadow:var(--sh-dark);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:12px;font-weight:800;font-size:15px;color:#cfcbff}
+.day small{font-size:9px;font-weight:700;color:#8f8bc8;text-transform:uppercase}
+.day.on{background:linear-gradient(180deg,#f3f2ff,#c9c4ff);color:var(--navy);height:104px;box-shadow:0 0 18px rgba(157,140,255,.55)}
+.day.on small{color:var(--navy3)}
+.day .dot{width:6px;height:6px;border-radius:50%;background:transparent;margin-bottom:auto;margin-top:12px}
+.day.on .dot{background:var(--ok)}
+
+/* ---------- bottom nav ---------- */
+.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:480px;height:84px;padding-bottom:env(safe-area-inset-bottom);z-index:20}
+.nav svg.bgw{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 -6px 14px rgba(120,115,175,.25))}
+.nav .row{position:relative;display:flex;justify-content:space-between;align-items:center;height:100%;padding:12px 38px 0}
+.nav .nb{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;color:var(--muted)}
+.nav .nb.act{color:var(--navy2)}
+.nav .nb.act:after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;background:var(--accent);margin-top:38px}
+.fab{position:absolute;left:50%;top:-30px;transform:translateX(-50%);width:76px;height:76px;border-radius:50%;background:var(--bg);box-shadow:var(--sh-out);display:grid;place-items:center}
+.fab i{width:60px;height:60px;border-radius:50%;background:linear-gradient(145deg,#3d3a78,#24224a);display:grid;place-items:center;box-shadow:inset 2px 2px 5px rgba(255,255,255,.12),3px 3px 10px rgba(30,25,80,.5)}
+.fab:active i{transform:scale(.94)}
+
+/* ---------- admin ---------- */
+.admin-top{padding:18px 20px 6px}
+.admin-top h2{margin:0;font-size:24px;font-weight:800}
+.admin-top p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.create{display:flex;gap:10px;margin:18px 20px 6px;padding:8px;border-radius:20px;box-shadow:var(--sh-in)}
+.create input{flex:1;min-width:0;border:0;outline:0;background:transparent;padding:0 10px;color:var(--ink);font-weight:600}
+.create input::placeholder{color:#aaa7c6}
+.btn{height:46px;padding:0 18px;border-radius:15px;background:linear-gradient(145deg,#3d3a78,#24224a);color:#fff;font-weight:700;display:inline-flex;align-items:center;gap:8px;box-shadow:4px 4px 10px rgba(40,35,100,.35)}
+.btn.light{background:var(--surface);color:var(--ink);box-shadow:var(--sh-out)}
+.btn.bad{background:linear-gradient(145deg,#ff86a0,#e95577)}
+.btn:active{transform:scale(.97)}
+.badge{position:absolute;top:-6px;right:-6px;min-width:24px;height:24px;border-radius:12px;background:var(--accent);color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center;padding:0 6px;box-shadow:0 3px 8px rgba(108,99,255,.5)}
+.tile .ic{position:relative}
+.tile.closed .ic{opacity:.55}
+
+/* ---------- sheet (QR / register) ---------- */
+.sheet{position:fixed;inset:0;z-index:50;background:var(--bg);overflow-y:auto;display:none;animation:up .28s ease}
+.sheet.show{display:block}
+@keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+.sheet-in{max-width:480px;margin:0 auto;padding:16px 20px 40px}
+.qr-wrap{margin:18px auto 0;width:min(86vw,330px);aspect-ratio:1;border-radius:34px;background:var(--surface);box-shadow:var(--sh-out);display:grid;place-items:center;position:relative}
+.qr-box{background:#fff;padding:14px;border-radius:22px;box-shadow:var(--sh-in)}
+.qr-box img,.qr-box canvas{display:block;width:min(64vw,250px)!important;height:auto!important}
+.ring{position:absolute;inset:-1px;width:calc(100% + 2px);height:calc(100% + 2px);pointer-events:none}
+.qr-closed{color:var(--muted);text-align:center;font-weight:700;padding:30px}
+.meta{display:flex;justify-content:center;gap:14px;margin-top:22px}
+.stat{flex:1;border-radius:20px;padding:14px;text-align:center;box-shadow:var(--sh-out);background:var(--surface)}
+.stat b{display:block;font-size:24px;font-weight:800}
+.stat small{color:var(--muted);font-size:12px;font-weight:700}
+.list{margin-top:22px;display:flex;flex-direction:column;gap:12px}
+.row-i{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:var(--surface);box-shadow:var(--sh-out);animation:up .3s ease}
+.row-i .av{width:38px;height:38px;border-radius:13px;display:grid;place-items:center;color:#fff;font-weight:800;flex:0 0 auto}
+.row-i div{flex:1;min-width:0}
+.row-i b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-i small{color:var(--muted);font-size:12px}
+.row-i time{font-weight:800;color:var(--navy3);font-size:13px}
+.actions{display:flex;gap:12px;margin-top:22px}
+.actions .btn{flex:1;justify-content:center}
+.back{display:flex;align-items:center;gap:6px;color:var(--muted);font-weight:700;height:40px}
+.sheet h2{margin:8px 0 0;font-size:22px;text-align:center}
+.sheet .center-sub{color:var(--muted);text-align:center;font-size:13px;margin-top:4px}
+.field{margin-top:24px;padding:6px 16px;border-radius:18px;box-shadow:var(--sh-in)}
+.field input{width:100%;border:0;outline:0;background:transparent;height:48px;font-weight:700;color:var(--ink);font-size:16px}
+
+/* ---------- toast / result ---------- */
+.toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-140%);z-index:100;max-width:90%;padding:13px 18px;border-radius:18px;background:var(--navy);color:#fff;font-weight:700;font-size:14px;box-shadow:0 10px 30px rgba(30,25,80,.4);transition:transform .35s cubic-bezier(.2,.9,.3,1.2);display:flex;gap:10px;align-items:center}
+.toast.show{transform:translate(-50%,0)}
+.result{position:fixed;inset:0;z-index:90;display:none;place-items:center;background:rgba(42,40,80,.35);backdrop-filter:blur(6px)}
+.result.show{display:grid}
+.result .box{width:min(84vw,320px);border-radius:32px;background:var(--bg);box-shadow:var(--sh-out);padding:30px 22px;text-align:center;animation:pop .35s cubic-bezier(.2,.9,.3,1.3)}
+@keyframes pop{from{transform:scale(.8);opacity:0}to{transform:none;opacity:1}}
+.result .big{width:96px;height:96px;border-radius:50%;margin:0 auto 18px;display:grid;place-items:center;box-shadow:var(--sh-out);background:var(--surface)}
+.result h3{margin:0 0 6px;font-size:20px}
+.result p{margin:0 0 20px;color:var(--muted);font-size:14px;line-height:1.45}
+.loading{display:grid;place-items:center;min-height:60vh;color:var(--muted);font-weight:700}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="loading" id="loading">Yuklanmoqda…</div>
+
+  <!-- ===================== STUDENT HOME ===================== -->
+  <section id="home" class="hidden">
+    <div class="hero">
+      <div class="notch"><div class="avatar" id="avatar">?</div></div>
+      <div class="topbar">
+        <div class="ibtn"><svg width="26" height="26" viewBox="0 0 24 24" fill="#d8d5ff"><path d="M7 18a5 5 0 0 1-.6-9.96A6 6 0 0 1 17.8 9.1 4.5 4.5 0 0 1 17.5 18H7z"/></svg></div>
+        <button class="ibtn" id="regBtn" aria-label="Profil"><svg width="24" height="24" fill="none" stroke="#d8d5ff" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      </div>
+      <div class="pill"><span id="hello">Salom!</span><svg width="18" height="18" fill="none" stroke="#8f8bc8" stroke-width="2"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2" stroke-linecap="round"/></svg></div>
+      <div class="card">
+        <div class="card-h">
+          <div class="logo"><svg width="26" height="26" viewBox="0 0 24 24"><defs><linearGradient id="lg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9ad5"/><stop offset="1" stop-color="#8f7bff"/></linearGradient></defs><rect x="3" y="3" width="7" height="7" rx="2" fill="url(#lg1)"/><rect x="14" y="3" width="7" height="7" rx="2" fill="url(#lg1)" opacity=".7"/><rect x="3" y="14" width="7" height="7" rx="2" fill="url(#lg1)" opacity=".7"/><rect x="14" y="14" width="3" height="3" rx="1" fill="url(#lg1)"/><rect x="18" y="18" width="3" height="3" rx="1" fill="url(#lg1)"/></svg></div>
+          <div><h1>Davomat</h1><div class="sub" id="statSub">0 ta dars</div></div>
+        </div>
+        <div class="bar"><i id="barFill" style="width:0"></i></div>
+        <div class="bar-l"><span>Qatnashish</span><span id="pct">0%</span></div>
+      </div>
+    </div>
+    <svg class="wave" viewBox="0 0 400 70" preserveAspectRatio="none"><path d="M0 70 L0 40 C70 40 90 6 170 6 L400 6 L400 0 L0 0 Z" fill="none"/><path d="M0 70 L0 34 C80 34 110 2 200 2 C300 2 330 30 400 30 L400 70 Z" fill="var(--bg)"/></svg>
+
+    <div class="content">
+      <div class="sec-h"><span><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5" stroke-linecap="round"/></svg>So'nggi darslar</span><span id="histCount"></span></div>
+      <div class="grid" id="hist"></div>
+
+      <div class="dark-panel">
+        <h3>Oxirgi 14 kun</h3>
+        <div class="days" id="days"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ADMIN ===================== -->
+  <section id="admin" class="hidden">
+    <div class="admin-top">
+      <h2>Darslar</h2>
+      <p id="adminSub">Dars yarating va QR kodni ekranga chiqaring</p>
+    </div>
+    <div class="create">
+      <input id="newTitle" placeholder="Dars nomi, masalan: Matematika 1-guruh" maxlength="80">
+      <button class="btn" id="createBtn"><svg width="18" height="18" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M9 3v12M3 9h12"/></svg>Yaratish</button>
+    </div>
+    <div class="content"><div class="sec-h"><span>Barcha darslar</span><span id="sessCount"></span></div>
+      <div class="grid" id="sessions"></div>
+    </div>
+  </section>
+</div>
+
+<!-- bottom nav -->
+<nav class="nav hidden" id="nav">
+  <svg class="bgw" viewBox="0 0 400 84" preserveAspectRatio="none"><path d="M0 18 Q0 4 14 4 L136 4 C156 4 160 44 200 44 C240 44 244 4 264 4 L386 4 Q400 4 400 18 L400 84 L0 84 Z" fill="#eceaf6"/></svg>
+  <div class="row">
+    <button class="nb act" id="navHome" aria-label="Asosiy"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 3 10.5V20a1 1 0 0 0 1 1h5v-6h6v6h5a1 1 0 0 0 1-1v-9.5z"/></svg></button>
+    <button class="nb" id="navAdmin" aria-label="Admin"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM15 13h5v2h-5zM13 17h2v3h-2zM17 17h3v3h-3z"/></svg></button>
+  </div>
+  <button class="fab" id="scanBtn" aria-label="QR skanerlash"><i><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#cfc9ff" stroke-width="2.2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/></svg></i></button>
+</nav>
+
+<!-- QR session sheet -->
+<div class="sheet" id="qrSheet"><div class="sheet-in">
+  <button class="back" id="qrBack"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4 6 10l6 6"/></svg>Orqaga</button>
+  <h2 id="qrTitle">Dars</h2>
+  <div class="center-sub" id="qrSub">QR kodni skanerlang</div>
+  <div class="qr-wrap">
+    <svg class="ring" viewBox="0 0 100 100"><rect x="1.5" y="1.5" width="97" height="97" rx="11" fill="none" stroke="#d6d3ee" stroke-width="1.6"/><rect id="ringBar" x="1.5" y="1.5" width="97" height="97" rx="11" fill="none" stroke="url(#rg)" stroke-width="1.6" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="0"/><defs><linearGradient id="rg"><stop offset="0" stop-color="#6c63ff"/><stop offset="1" stop-color="#ff8fcf"/></linearGradient></defs></svg>
+    <div class="qr-box" id="qrBox"></div>
+    <div class="qr-closed hidden" id="qrClosed">🔒 Davomat yopilgan</div>
+  </div>
+  <div class="meta">
+    <div class="stat"><b id="qrCount">0</b><small>keldi</small></div>
+    <div class="stat"><b id="qrTimer">10</b><small>soniyada yangilanadi</small></div>
+  </div>
+  <div class="actions">
+    <button class="btn light" id="exportBtn"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 3v9m-4-4 4 4 4-4M3 15h12"/></svg>CSV</button>
+    <button class="btn bad" id="closeBtn">Yopish</button>
+  </div>
+  <div class="list" id="attList"></div>
+</div></div>
+
+<!-- register sheet -->
+<div class="sheet" id="regSheet"><div class="sheet-in">
+  <div style="height:30px"></div>
+  <div class="result" style="display:block;position:static;background:none;backdrop-filter:none"><div class="big" style="margin-top:20px"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#6c63ff" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div></div>
+  <h2>Ism-familiyangiz</h2>
+  <div class="center-sub">Davomat hisobotida shu ism ko'rinadi</div>
+  <div class="field"><input id="regName" placeholder="Masalan: Aliyev Vali" maxlength="80" autocomplete="name"></div>
+  <div class="actions"><button class="btn" id="regSave" style="flex:1;justify-content:center">Saqlash</button></div>
+</div></div>
+
+<div class="result" id="result"><div class="box">
+  <div class="big" id="resIcon"></div>
+  <h3 id="resTitle"></h3><p id="resText"></p>
+  <button class="btn" id="resOk" style="width:100%;justify-content:center">Yaxshi</button>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+const $ = id => document.getElementById(id);
+const DEMO = new URLSearchParams(location.search).has('demo');
+let ME = null, current = null, qr = null, pollT = null, tickT = null;
+
+if (tg) { tg.ready(); tg.expand(); try{ tg.setHeaderColor('#3a3770'); tg.setBackgroundColor('#e4e3f1'); }catch(e){} }
+const haptic = t => { try{ t==='ok'||t==='error' ? tg.HapticFeedback.notificationOccurred(t==='ok'?'success':'error') : tg.HapticFeedback.impactOccurred('light'); }catch(e){} };
+
+/* ---------------- API ---------------- */
+async function api(path, body) {
+  if (DEMO) return demoApi(path, body);
+  const r = await fetch(path, {
+    method: body ? 'POST' : 'GET',
+    headers: {'Content-Type':'application/json', 'X-Init-Data': tg?.initData || ''},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await r.json().catch(() => ({error:'Server xatosi'}));
+  if (!r.ok && !('ok' in data)) throw new Error(data.error || 'Xatolik');
+  return data;
+}
+
+/* ---------------- helpers ---------------- */
+const MONTHS = ['YAN','FEV','MAR','APR','MAY','IYN','IYL','AVG','SEN','OKT','NOY','DEK'];
+const HUES = [['#ffb86b','#ff7a59'],['#8fd3ff','#5b8cff'],['#c3a6ff','#7b61ff'],['#7ef0c4','#2fb99a'],['#ff9ad5','#ff5f9e'],['#ffe17a','#ffb02e']];
+const hue = s => HUES[[...String(s)].reduce((a,c)=>a+c.charCodeAt(0),0) % HUES.length];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const initials = n => String(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const fmtDate = d => { const [y,m,dd] = d.split('-'); return `${+dd} ${MONTHS[+m-1].toLowerCase()}`; };
+function icon(seed, kind='check') {
+  const [a,b] = hue(seed), id = 'g'+Math.random().toString(36).slice(2,8);
+  const shapes = {
+    check: `<circle cx="18" cy="18" r="13" fill="url(#${id})"/><path d="M12 18.5l4 4 8-9" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+    book: `<rect x="7" y="6" width="22" height="25" rx="4" fill="url(#${id})"/><rect x="11" y="11" width="14" height="3" rx="1.5" fill="#fff" opacity=".85"/><rect x="11" y="17" width="9" height="3" rx="1.5" fill="#fff" opacity=".6"/>`,
+  };
+  return `<svg width="36" height="36" viewBox="0 0 36 36"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs>${shapes[kind]}</svg>`;
+}
+function toast(msg) { const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2600); }
+function showResult(ok, title, text) {
+  $('resIcon').innerHTML = ok
+    ? `<svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#3fbf8f" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`
+    : `<svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#ff6b8a" stroke-width="2.6" stroke-linecap="round"><path d="M7 7l10 10M17 7 7 17"/></svg>`;
+  $('resTitle').textContent = title; $('resText').textContent = text;
+  $('result').classList.add('show'); haptic(ok ? 'ok' : 'error');
+}
+$('resOk').onclick = () => $('result').classList.remove('show');
+
+/* ---------------- student home ---------------- */
+function renderHome() {
+  const u = ME.user, s = ME.stats;
+  $('avatar').textContent = initials(u.full_name);
+  $('hello').textContent = `Salom, ${u.full_name.split(' ')[0]}!`;
+  $('statSub').textContent = `${s.attended} ta darsda qatnashgan`;
+  const pct = s.total ? Math.round(s.attended / s.total * 100) : 0;
+  $('pct').textContent = pct + '%'; requestAnimationFrame(()=> $('barFill').style.width = pct + '%');
+
+  const h = ME.history;
+  $('histCount').textContent = h.length ? h.length + ' ta' : '';
+  $('hist').innerHTML = h.length ? h.slice(0, 9).map(r => `
+    <div class="tile"><div class="ic">${icon(r.title)}</div><b>${esc(r.title)}</b><small>${fmtDate(r.date)} · ${r.time}</small></div>`).join('')
+    : `<div class="empty">Hali davomat yo'q.<br>Pastdagi tugmani bosib, darsdagi QR kodni skanerlang.</div>`;
+
+  const on = new Set(h.map(r => r.date)), days = [];
+  for (let i = 0; i < 14; i++) { const d = new Date(Date.now() - i*864e5); days.push(d); }
+  const key = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  $('days').innerHTML = days.map(d => `<div class="day ${on.has(key(d))?'on':''}"><span class="dot"></span>${d.getDate()}<small>${MONTHS[d.getMonth()]}</small></div>`).join('');
+}
+
+/* ---------------- scanning ---------------- */
+async function doCheckin(code) {
+  try {
+    const r = await api('/api/checkin', {code});
+    showResult(r.ok, r.ok ? 'Belgilandingiz!' : 'Qabul qilinmadi', r.message);
+    if (r.ok) { ME = await api('/api/me'); renderHome(); }
+  } catch (e) { showResult(false, 'Xatolik', e.message); }
+}
+$('scanBtn').onclick = () => {
+  haptic();
+  if (DEMO || !tg?.showScanQrPopup || !tg.isVersionAtLeast?.('6.4')) {
+    const c = prompt('QR skaner mavjud emas. Kodni kiriting:'); if (c) doCheckin(c); return;
+  }
+  let done = false;
+  tg.showScanQrPopup({text: 'Ekrandagi davomat QR kodini skanerlang'}, text => {
+    if (done) return true; done = true; tg.closeScanQrPopup(); doCheckin(text); return true;
+  });
+};
+
+/* ---------------- register ---------------- */
+function openReg() { $('regName').value = ME.user.registered ? ME.user.full_name : ''; $('regSheet').classList.add('show'); setTimeout(()=>$('regName').focus(), 300); }
+$('regBtn').onclick = openReg;
+$('regSave').onclick = async () => {
+  try { const r = await api('/api/register', {full_name: $('regName').value});
+    if (r.error) throw new Error(r.error);
+    ME.user.full_name = r.full_name; ME.user.registered = true; renderHome();
+    $('regSheet').classList.remove('show'); toast('Saqlandi ✅'); haptic('ok');
+  } catch (e) { toast(e.message); haptic('error'); }
+};
+
+/* ---------------- admin ---------------- */
+async function loadSessions() {
+  const r = await api('/api/sessions');
+  $('adminSub').textContent = `${r.students} ta talaba ro'yxatdan o'tgan`;
+  $('sessCount').textContent = r.sessions.length ? r.sessions.length + ' ta' : '';
+  $('sessions').innerHTML = r.sessions.length ? r.sessions.map(s => `
+    <button class="tile ${s.closed?'closed':''}" data-id="${s.id}">
+      <div class="ic">${icon(s.title,'book')}${s.count?`<span class="badge">${s.count}</span>`:''}</div>
+      <b>${esc(s.title)}</b><small>${s.closed?'🔒 ':''}${fmtDate(s.date)} · ${s.time}</small>
+    </button>`).join('') : `<div class="empty">Hali dars yo'q. Yuqorida nom yozib «Yaratish»ni bosing.</div>`;
+  $('sessions').querySelectorAll('[data-id]').forEach(b => b.onclick = () => openSession(+b.dataset.id));
+}
+$('createBtn').onclick = async () => {
+  haptic();
+  try { const r = await api('/api/sessions', {title: $('newTitle').value}); $('newTitle').value=''; openSession(r.id); loadSessions(); }
+  catch (e) { toast(e.message); }
+};
+
+async function refreshSession() {
+  const s = await api('/api/sessions/' + current);
+  $('qrTitle').textContent = s.title;
+  $('qrSub').textContent = `${fmtDate(s.date)} · ${s.time}` + (s.closed ? ' · yopilgan' : ' · telefon kamerasi yoki ilova orqali skanerlang');
+  $('qrCount').textContent = s.attendees.length;
+  $('qrBox').classList.toggle('hidden', s.closed); $('qrClosed').classList.toggle('hidden', !s.closed);
+  $('closeBtn').textContent = s.closed ? 'Qayta ochish' : 'Yopish'; $('closeBtn').dataset.closed = s.closed ? 1 : 0;
+  if (s.qr) {
+    if (!qr) qr = new QRCode($('qrBox'), {text: s.qr, width: 500, height: 500, colorDark: '#2a2850', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M});
+    else qr.makeCode(s.qr);
+  }
+  const list = $('attList'), prev = list.childElementCount;
+  if (s.attendees.length !== prev) {
+    if (prev && s.attendees.length > prev) haptic();
+    list.innerHTML = s.attendees.map(a => { const [c1,c2]=hue(a.full_name); return `
+      <div class="row-i"><span class="av" style="background:linear-gradient(145deg,${c1},${c2})">${esc(initials(a.full_name))}</span>
+      <div><b>${esc(a.full_name)}</b><small>${a.username?'@'+esc(a.username):''}</small></div><time>${a.time}</time></div>`; }).join('');
+  }
+  return s;
+}
+async function openSession(id) {
+  current = id; qr = null; $('qrBox').innerHTML = ''; $('attList').innerHTML = '';
+  $('qrSheet').classList.add('show');
+  try { const s = await refreshSession(); startTimer(s.rotate || 10); } catch (e) { toast(e.message); }
+  tg?.BackButton?.show();
+}
+function startTimer(rot) {
+  clearInterval(tickT); let left = rot;
+  const ring = $('ringBar');
+  const step = () => { $('qrTimer').textContent = left; ring.style.strokeDashoffset = 100 - left/rot*100; };
+  step();
+  tickT = setInterval(async () => {
+    left--; if (left <= 0) { left = rot; refreshSession().catch(()=>{}); }
+    else if (left % 3 === 0) refreshSession().catch(()=>{});  // ro'yxatni tez-tez yangilash
+    step();
+  }, 1000);
+}
+function closeSheet() { clearInterval(tickT); current = null; $('qrSheet').classList.remove('show'); tg?.BackButton?.hide(); loadSessions(); }
+$('qrBack').onclick = closeSheet;
+tg?.BackButton?.onClick(() => { if ($('regSheet').classList.contains('show')) $('regSheet').classList.remove('show'); else closeSheet(); });
+$('closeBtn').onclick = async () => {
+  const reopen = $('closeBtn').dataset.closed === '1';
+  await api(`/api/sessions/${current}/close`, {reopen}); haptic(); qr = null; $('qrBox').innerHTML=''; refreshSession();
+};
+$('exportBtn').onclick = async () => { haptic(); try { const r = await api(`/api/sessions/${current}/export`, {}); toast(r.message); } catch (e) { toast(e.message); } };
+
+/* ---------------- nav ---------------- */
+function show(tab) {
+  $('home').classList.toggle('hidden', tab !== 'home'); $('admin').classList.toggle('hidden', tab !== 'admin');
+  $('navHome').classList.toggle('act', tab === 'home'); $('navAdmin').classList.toggle('act', tab === 'admin');
+  if (tab === 'admin') loadSessions().catch(e => toast(e.message));
+  window.scrollTo(0, 0);
+}
+$('navHome').onclick = () => { haptic(); show('home'); };
+$('navAdmin').onclick = () => { haptic(); show('admin'); };
+
+/* ---------------- boot ---------------- */
+(async function boot() {
+  if (!DEMO && !tg?.initData) { $('loading').innerHTML = 'Bu ilovani Telegram bot orqali oching 📲'; return; }
+  try { ME = await api('/api/me'); }
+  catch (e) { $('loading').textContent = e.message; return; }
+  $('loading').classList.add('hidden'); $('nav').classList.remove('hidden');
+  if (!ME.user.is_admin) $('navAdmin').classList.add('hidden');
+  renderHome(); show('home');
+  if (!ME.user.registered) openReg();
+  const sp = tg?.initDataUnsafe?.start_param;   // t.me/bot/app?startapp=c_TOKEN
+  if (sp && sp.startsWith('c_')) doCheckin(sp);
+})();
+
+/* ---------------- demo (brauzerda ?demo) ---------------- */
+function demoApi(path, body) {
+  const now = new Date(), d = n => { const x = new Date(now - n*864e5); return x.toISOString().slice(0,10); };
+  if (path === '/api/me') return {user:{full_name:'Aziza Karimova',is_admin:true,registered:true},stats:{attended:17,total:20},
+    history:[['Matematika',0,'09:02'],['Fizika',1,'10:15'],['Ingliz tili',1,'14:01'],['Tarix',2,'08:58'],['Informatika',4,'11:30'],['Kimyo',5,'09:10']].map(([t,n,tm])=>({title:t,date:d(n),time:tm}))};
+  if (path === '/api/sessions' && !body) return {students:42,sessions:[['Matematika 1-guruh',23,0],['Fizika',18,0],['Informatika',25,1],['Tarix',0,0]].map(([t,c,cl],i)=>({id:i+1,title:t,count:c,closed:!!cl,date:d(i),time:'09:00'}))};
+  if (path.startsWith('/api/sessions/') && !body) return {title:'Matematika 1-guruh',date:d(0),time:'09:00',closed:false,rotate:10,qr:'https://t.me/demo_bot?start=c_1-'+Date.now().toString(16)+'-abc',
+    attendees:['Aliyev Vali','Karimova Aziza','Rahimov Bobur','Toshmatova Nilufar'].map((n,i)=>({full_name:n,username:'user'+i,time:'09:0'+i}))};
+  return {ok:true,message:'Demo rejim'};
+}
+</script>
+</body>
+</html>
