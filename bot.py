@@ -209,11 +209,22 @@ def upsert_user(uid: int, full_name: str, username: str | None):
     return q1("SELECT * FROM users WHERE id=?", uid)
 
 
+_groups_cache: dict | None = None
+
+
 def group_name(gid):
+    """Guruh nomi (keshdan — har bir dars uchun bazaga alohida so'rov yubormaslik uchun)."""
+    global _groups_cache
     if not gid:
         return None
-    r = q1("SELECT name FROM groups WHERE id=?", gid)
-    return r["name"] if r else None
+    if _groups_cache is None:
+        _groups_cache = {r["id"]: r["name"] for r in q("SELECT id, name FROM groups")}
+    return _groups_cache.get(gid)
+
+
+def groups_changed():
+    global _groups_cache
+    _groups_cache = None
 
 
 # ---------------------------------------------------------------- vaqt yordamchilari
@@ -735,6 +746,7 @@ async def api_group_save(request):
         run("UPDATE groups SET name=? WHERE id=?", name, gid)
     else:
         gid = insert("INSERT INTO groups(name, created_at) VALUES(?,?)", name, now())
+    groups_changed()
     return web.json_response({"ok": True, "id": gid, "name": name})
 
 
@@ -742,6 +754,7 @@ async def api_group_delete(request):
     gid = int(request.match_info["gid"])
     run("UPDATE lessons SET group_id=NULL WHERE group_id=?", gid)
     run("DELETE FROM groups WHERE id=?", gid)
+    groups_changed()
     return web.json_response({"ok": True})
 
 
