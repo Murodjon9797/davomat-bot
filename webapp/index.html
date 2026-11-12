@@ -1170,6 +1170,22 @@ async function boot() {
   show(ME.user.is_admin && !URL_CODE ? 'admin' : 'home');
   if (!ME.user.registered) openReg();
   else if (URL_CODE) handleCode(URL_CODE);
+  if (DEMO && QS.get('view')) demoView(QS.get('view'));
+}
+
+/* demo: taqdimot rasmlari uchun kerakli ekranni ochish (?demo&view=...) */
+async function demoView(v) {
+  const st = document.createElement('style');
+  st.textContent = '*{animation:none!important;transition:none!important}.toast{display:none!important}';
+  document.head.appendChild(st);
+  if (v === 'home') show('home');
+  if (v === 'start') { show('home'); ME.open = null; renderHome(); await handleCode('demo'); }
+  if (v === 'done') { show('home'); showResult(true, 'Darsga kirdingiz!', "Darsga kirish qayd etildi: 09:00\n101-guruh · Matematika"); }
+  if (['stats','jur','tch','inv','set','grp','msg','qr','teacher'].includes(v)) $('nav').style.display = 'none';
+  if (['stats','jur','tch','inv','set','grp','msg'].includes(v)) { show('admin'); showPane(v); }
+  if (v === 'qr') { show('admin'); showPane('set'); setTimeout(() => $('qrPrint').scrollIntoView({block:'center'}), 400); }
+  if (v === 'teacher') { show('admin'); showPane('tch'); openTeacher(2); }
+  if (v === 'kiosk') openKiosk();
 }
 boot();
 
@@ -1191,7 +1207,7 @@ function demoApi(path, body) {
     days:[38,52,0,61,55,49,57].map((x,i)=>({date:d(6-i),lessons:x})),
     ranking: names.map((n,i)=>({id:i+2,full_name:n,lessons:40-i*3,forgot:i%3===2?1:0,hours_text:`${52-i*4} soat ${i*7} daq`})),
     absent_today: names.slice(4).map((n,i)=>({id:i+9,full_name:n})), admins:[{id:1,full_name:'Karimova Aziza Rustamovna',username:'aziza',is_owner:true}], pending:2};
-  if (path.startsWith('/api/admin/teachers?') || path === '/api/admin/teachers') return {teachers: names.map((n,i)=>({id:i+2,full_name:n,username:'user'+i,is_admin:i===0,registered:i!==5,in_lesson:i<3,month:{lessons:40-i*3,forgot:i%3===2?1:0,hours_text:`${52-i*4} soat`}}))};
+  if (path.startsWith('/api/admin/teachers?') || path === '/api/admin/teachers') return {teachers: names.map((n,i)=>({id:i+2,full_name:n,username:'user'+i,is_admin:i===0,approved:true,is_owner:false,registered:i!==5,in_lesson:i<3,month:{lessons:40-i*3,forgot:i%3===2?1:0,hours_text:`${52-i*4} soat`}}))};
   if (/^\/api\/admin\/teachers\/\d+$/.test(path) && !body) return {id:2,full_name:names[0],username:'vali',is_admin:false,registered:true,month:{lessons:38,forgot:1,hours_text:'49 soat 20 daq'},
     history:[L(1,0,1800,null,'open','101-guruh','Fizika'), L(2,0,9000,4200,'done','102-guruh','Fizika'), L(3,1,40000,null,'forgot','201-guruh','Fizika'), L(4,1,30000,25200,'done','101-guruh','Fizika')]};
   if (path.startsWith('/api/admin/lessons?')) return {lessons: names.map((n,i)=>({...L(i+1,0,600+i*2900, i%3===0?null:i*900, i%3===0?'open':i===4?'forgot':'done', G[i%3].name, ['Fizika','Kimyo','Tarix','Ona tili','Algebra','Biologiya'][i]), full_name:n}))};
