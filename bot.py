@@ -1136,6 +1136,24 @@ async def stale_loop():
         await asyncio.sleep(600)
 
 
+async def keepalive_loop():
+    """Render bepul serveri 15 daqiqa tashqi so'rovsiz qolsa uxlaydi.
+    Server o'z ochiq manziliga har 4 daqiqada so'rov yuboradi — so'rov Render orqali
+    kirgani uchun «faollik» hisoblanadi va server uxlamaydi."""
+    import aiohttp
+    url = WEBAPP_URL + "/health"
+    await asyncio.sleep(30)
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as s:
+        while True:
+            try:
+                async with s.get(url) as r:
+                    if r.status != 200:
+                        log.warning("keepalive: %s", r.status)
+            except Exception as e:
+                log.warning("keepalive: %s", e)
+            await asyncio.sleep(240)
+
+
 async def main():
     global BOT_USERNAME
     me = await bot.get_me()
@@ -1154,6 +1172,9 @@ async def main():
     await web.TCPSite(runner, "0.0.0.0", PORT).start()
     log.info("Web server: http://localhost:%s  |  WEBAPP_URL=%s", PORT, WEBAPP_URL or "(yo'q)")
     asyncio.create_task(stale_loop())
+    if WEBAPP_URL.startswith("https://") and (os.getenv("RENDER") or os.getenv("KEEPALIVE") == "1"):
+        asyncio.create_task(keepalive_loop())
+        log.info("Keepalive yoqildi: har 4 daqiqada %s/health", WEBAPP_URL)
 
     if WEBAPP_URL:
         await bot.set_chat_menu_button(menu_button=MenuButtonWebApp(text="Davomat", web_app=WebAppInfo(url=WEBAPP_URL)))
