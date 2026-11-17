@@ -407,6 +407,7 @@ body:not(.mode-work) .work-only{display:none!important}
 
       <!-- O'QITUVCHILAR -->
       <div class="pane hidden" id="p-tch">
+        <button class="loc-card" id="rosterCard" style="width:100%;margin:0 0 14px;cursor:pointer"><span class="li">📋</span><div>Xodimlar ro'yxati<small id="rosterInfo">ro'yxatdan o'tishda ism shu yerdan tanlanadi</small></div></button>
         <div class="box form"><input class="inp" id="tQ" placeholder="🔍 Ism, username yoki ID bo'yicha qidirish"></div>
         <div class="sec-h"><span id="tCount">O'qituvchilar</span><span>bu oy</span></div>
         <div class="list" id="tList"></div>
@@ -569,16 +570,45 @@ body:not(.mode-work) .work-only{display:none!important}
   <button class="btn bad" id="tDel" style="width:100%;margin-top:22px">O'qituvchini o'chirish</button>
 </div></div>
 
+<!-- XODIMLAR RO'YXATI sheet -->
+<div class="sheet" id="rosterSheet"><div class="sheet-in">
+  <button class="back" data-close="rosterSheet"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 4 6 10l6 6"/></svg>Orqaga</button>
+  <h2>Xodimlar ro'yxati</h2>
+  <div class="center-sub" id="rosterSub"></div>
+  <div class="meta">
+    <div class="stat"><b id="rsTotal" style="color:var(--accent)">0</b><small>ro'yxatda</small></div>
+    <div class="stat"><b id="rsLinked" style="color:var(--ok)">0</b><small>botga ulangan</small></div>
+    <div class="stat"><b id="rsFree" style="color:var(--warn)">0</b><small>ulanmagan</small></div>
+  </div>
+  <div class="box form" style="margin-top:20px">
+    <input class="inp" id="rsName" maxlength="100" placeholder="Familiya Ism Otasining ismi">
+    <input class="inp" id="rsPos" maxlength="120" placeholder="Lavozimi (ixtiyoriy)">
+    <button class="btn" id="rsAdd">➕ Xodim qo'shish</button>
+    <details style="margin-top:4px"><summary style="cursor:pointer;color:var(--muted);font-weight:700;font-size:13px">📥 Ko'p xodimni birdan kiritish</summary>
+      <textarea class="inp" id="rsImport" style="margin-top:10px;height:160px" placeholder="Har qatorga bitta xodim:&#10;Aliyev Vali Karimovich | Tarix fani o'qituvchisi"></textarea>
+      <button class="btn light" id="rsImportBtn" style="margin-top:10px;width:100%">Ro'yxatni kiritish</button>
+    </details>
+  </div>
+  <div class="chips" id="rsFilter" style="margin-top:18px">
+    <button class="chip act" data-f="all">Hammasi</button><button class="chip" data-f="free">Ulanmaganlar</button><button class="chip" data-f="linked">Ulanganlar</button>
+  </div>
+  <div class="list" id="rsList"></div>
+</div></div>
+
 <!-- REGISTER sheet -->
 <div class="sheet" id="regSheet"><div class="sheet-in">
   <div style="height:30px"></div>
   <div class="big-av" style="background:var(--surface)"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6c63ff" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div>
-  <h2>Profilingiz</h2>
-  <div class="center-sub">Davomat jurnalida shu ism ko'rinadi</div>
-  <div class="form" style="margin-top:24px">
+  <h2 id="regTitle">Profilingiz</h2>
+  <div class="center-sub" id="regSub">Davomat jurnalida shu ism ko'rinadi</div>
+  <div class="form" style="margin-top:24px" id="regFree">
     <label class="lb">Familiya, ism, otasining ismi</label>
     <input class="inp" id="regName" placeholder="Masalan: Aliyev Vali Karimovich" maxlength="80" autocomplete="name">
     <button class="btn" id="regSave">Saqlash</button>
+  </div>
+  <div class="form hidden" style="margin-top:20px" id="regPick">
+    <input class="inp" id="regQ" placeholder="🔍 Familiyangizni yozing">
+    <div class="list" id="regList" style="margin-top:4px"></div>
   </div>
 </div></div>
 
@@ -939,7 +969,39 @@ $('scanBtn').onclick = () => {
   });
 };
 
-function openReg() { $('regName').value = ME.user.registered ? ME.user.full_name : ''; openSheet('regSheet'); }
+let ROSTER = [];
+function renderRoster() {
+  const qv = $('regQ').value.trim().toLowerCase().replace(/[\'`ʻ]/g, '');
+  const list = ROSTER.filter(e => !qv || e.full_name.toLowerCase().replace(/[\'`ʻ]/g, '').includes(qv));
+  $('regList').innerHTML = list.length ? list.map(e => `
+    <button class="row-i" data-eid="${e.id}">${av(e.full_name)}<div class="mid"><b>${esc(e.full_name)}${e.mine ? '<span class="tag" style="background:#d6fbe9;color:#18805c">siz</span>' : ''}</b><small>${esc(e.position)}</small></div></button>`).join('')
+    : `<div class="empty">Topilmadi. Ismingiz ro'yxatda bo'lmasa yoki boshqa odam tanlab qo'ygan bo'lsa, adminga murojaat qiling.</div>`;
+  $('regList').querySelectorAll('[data-eid]').forEach(b => b.onclick = async () => {
+    const e = ROSTER.find(x => x.id == b.dataset.eid);
+    if (!await modal({icon:'👤', title: e.full_name, text: (e.position ? e.position + '\n\n' : '') + 'Bu sizmisiz? Tanlangan ism davomat jurnalida ko\'rinadi va keyin faqat admin o\'zgartira oladi.',
+                      buttons:[{label:'Yo\'q', cls:'light', value:false},{label:'Ha, menman', value:true}]})) return;
+    const r = await act('/api/register', {employee_id: e.id}, 'Ro\'yxatdan o\'tdingiz ✅'); if (!r) return loadRoster();
+    ME.user.full_name = r.full_name; ME.user.registered = true; ME.employee = {id: e.id, full_name: e.full_name, position: e.position};
+    renderHome(); closeSheet('regSheet');
+    if (URL_CODE && !ME._codeUsed) { ME._codeUsed = true; handleCode(URL_CODE); }
+  });
+}
+async function loadRoster() {
+  try { ROSTER = (await api('/api/roster')).employees; renderRoster(); } catch (e) { toast(e.message); }
+}
+$('regQ').oninput = renderRoster;
+function openReg() {
+  const pick = (ME.roster_size || 0) > 0;
+  if (pick && ME.user.registered && ME.employee && !ME.user.is_admin) {
+    return modal({icon:'👤', title: ME.employee.full_name, text: (ME.employee.position ? ME.employee.position + '\n\n' : '') + "Siz ro'yxatdan o'tgansiz. Ismni o'zgartirish kerak bo'lsa, adminga murojaat qiling.", buttons:[{label:'Yaxshi', value:true}]});
+  }
+  $('regFree').classList.toggle('hidden', pick); $('regPick').classList.toggle('hidden', !pick);
+  $('regTitle').textContent = pick ? "Ismingizni tanlang" : 'Profilingiz';
+  $('regSub').textContent = pick ? "Ro'yxatdan o'zingizni toping va tanlang" : "Davomat jurnalida shu ism ko'rinadi";
+  $('regName').value = ME.user.registered ? ME.user.full_name : '';
+  if (pick) { $('regQ').value = ''; $('regList').innerHTML = '<div class="empty">Yuklanmoqda…</div>'; loadRoster(); }
+  openSheet('regSheet');
+}
 $('regBtn').onclick = openReg;
 $('regSave').onclick = async () => {
   const r = await act('/api/register', {full_name: $('regName').value}, 'Saqlandi ✅'); if (!r) return;
@@ -970,6 +1032,7 @@ function renderWorkStats(s) {
                  ['⏰', s.today.late, 'kechikdi', '#f0703d'], ['🏢', s.today.now_in, 'hozir ishda', '#5b8cff']];
   $('stTiles').innerHTML = tiles.map(t => `<div class="st"><span class="si" style="font-size:20px">${t[0]}</span><div><b style="color:${t[3]}">${t[1]}</b><small>${t[2]}</small></div></div>`).join('') +
     `<div class="st" style="grid-column:1/-1"><span class="si">🕗</span><div><b style="font-size:15px">${sc.start}–${sc.end} · tushlik ${sc.lunch_start}–${sc.lunch_end}</b><small>${s.workday_today ? `${sc.grace} daqiqagacha kechikishga ruxsat` : 'bugun dam olish kuni'}</small></div></div>` +
+    (s.roster_unlinked ? `<button class="st" style="grid-column:1/-1;text-align:left" onclick="showPane('tch')"><span class="si">📋</span><div><b style="font-size:16px">${s.roster_unlinked} xodim hali botga ulanmagan</b><small>ro'yxatni ko'rish uchun bosing →</small></div></button>` : '') +
     (s.pending ? `<button class="st" style="grid-column:1/-1;text-align:left" onclick="showPane('inv')"><span class="si">⏳</span><div><b style="font-size:16px">${s.pending} kishi kod kutmoqda</b><small>ruxsat berish uchun bosing →</small></div></button>` : '') +
     (s.unregistered ? `<div class="st" style="grid-column:1/-1"><span class="si">⚠️</span><div><b style="font-size:16px">${s.unregistered} kishi</b><small>profilini to'ldirmagan</small></div></div>` : '');
   $('nowCount').textContent = s.now_in.length || '';
@@ -1073,6 +1136,7 @@ function refreshAfterLesson() { if ($('tSheet').classList.contains('show')) open
 let tqT = null;
 async function loadTeachers() {
   try {
+    api('/api/admin/employees').then(r => $('rosterInfo').textContent = r.total ? `${r.total} xodim · ${r.linked} tasi botga ulangan · ${r.total - r.linked} tasi ulanmagan` : "hali kiritilmagan — bosing va xodimlarni qo'shing").catch(() => {});
     const r = await api('/api/admin/teachers?' + new URLSearchParams({q: $('tQ').value.trim()}));
     $('tCount').textContent = `${r.teachers.length} ta foydalanuvchi`;
     $('tList').innerHTML = r.teachers.length ? r.teachers.map(t => `
@@ -1127,6 +1191,45 @@ $('tDel').onclick = async () => {
   if (await confirmBox('O\'qituvchini o\'chirish?', 'Uning barcha dars yozuvlari ham o\'chadi.', 'O\'chirish'))
     if (await act(`/api/admin/teachers/${curTeacher}/delete`, {}, 'O\'chirildi')) closeSheet('tSheet');
 };
+
+/* ---- xodimlar ro'yxati ---- */
+let RS = [], rsF = 'all';
+async function loadEmployees() {
+  try {
+    const r = await api('/api/admin/employees'); RS = r.employees;
+    $('rsTotal').textContent = r.total; $('rsLinked').textContent = r.linked; $('rsFree').textContent = r.total - r.linked;
+    $('rosterInfo').textContent = r.total ? `${r.total} xodim · ${r.linked} tasi botga ulangan` : "hali kiritilmagan — bosing va xodimlarni qo'shing";
+    $('rosterSub').textContent = "Ro'yxatdan o'tayotgan odam ismini shu ro'yxatdan tanlaydi";
+    const list = RS.filter(e => rsF === 'all' || (rsF === 'free' ? !e.linked : e.linked));
+    $('rsList').innerHTML = list.length ? list.map(e => `
+      <button class="row-i" data-eid="${e.id}">${av(e.full_name)}
+        <div class="mid"><b>${esc(e.full_name)}${e.linked ? '<span class="tag" style="background:#d6fbe9;color:#18805c">ulangan</span>' : '<span class="tag off">ulanmagan</span>'}</b>
+        <small>${esc(e.position || '—')}${e.tg && e.tg.username ? ' · @' + esc(e.tg.username) : ''}</small></div></button>`).join('')
+      : `<div class="empty">Ro'yxat bo'sh</div>`;
+    $('rsList').querySelectorAll('[data-eid]').forEach(b => b.onclick = () => employeeMenu(RS.find(x => x.id == b.dataset.eid)));
+  } catch (e) { toast(e.message); }
+}
+async function employeeMenu(e) {
+  const btns = [{label:'✏️ Tahrirlash', cls:'light', value:'edit'}];
+  if (e.linked) btns.push({label:"🔗 Bog'lanishni bekor qilish", cls:'light', value:'unlink'});
+  if (e.linked) btns.push({label:"👤 Kartasini ochish", cls:'light', value:'open'});
+  btns.push({label:"🗑 Ro'yxatdan o'chirish", cls:'bad', value:'del'}, {label:'Yopish', cls:'light', value:null});
+  const v = await modal({title: e.full_name, text: (e.position || '') + (e.linked ? `\n\nBotga ulangan${e.tg && e.tg.username ? ': @' + e.tg.username : ''}` : "\n\nHali botga ulanmagan"), buttons: btns});
+  if (v === 'edit') {
+    const n = await promptBox('Familiya Ism Otasining ismi', e.full_name); if (!n) return;
+    const pos = await promptBox('Lavozimi', e.position || ''); if (pos === null) return;
+    if (await act('/api/admin/employees', {id: e.id, full_name: n, position: pos}, 'Saqlandi')) loadEmployees();
+  }
+  if (v === 'unlink' && await confirmBox("Bog'lanish bekor qilinsinmi?", "Bu odam keyingi safar ilovani ochganda ismini qaytadan tanlaydi. Xato ism tanlangan bo'lsa shu yordam beradi.", 'Bekor qilish'))
+    { if (await act(`/api/admin/employees/${e.id}/unlink`, {})) loadEmployees(); }
+  if (v === 'open') { closeSheet('rosterSheet'); openTeacher(e.user_id); }
+  if (v === 'del' && await confirmBox("Ro'yxatdan o'chirilsinmi?", "Xodim ro'yxatdan o'chadi. Botdagi akkaunti va davomat yozuvlari qoladi.", "O'chirish"))
+    { if (await act(`/api/admin/employees/${e.id}/delete`, {}, "O'chirildi")) loadEmployees(); }
+}
+$('rosterCard').onclick = () => { openSheet('rosterSheet'); loadEmployees(); };
+$('rsFilter').querySelectorAll('[data-f]').forEach(c => c.onclick = () => { rsF = c.dataset.f; $('rsFilter').querySelectorAll('.chip').forEach(x => x.classList.toggle('act', x === c)); loadEmployees(); });
+$('rsAdd').onclick = async () => { if (await act('/api/admin/employees', {full_name: $('rsName').value, position: $('rsPos').value}, "Qo'shildi")) { $('rsName').value = ''; $('rsPos').value = ''; loadEmployees(); } };
+$('rsImportBtn').onclick = async () => { $('rsImportBtn').disabled = true; if (await act('/api/admin/employees/import', {text: $('rsImport').value})) { $('rsImport').value = ''; loadEmployees(); } $('rsImportBtn').disabled = false; };
 
 /* ---- kirish kodlari ---- */
 async function loadInvites() {
@@ -1466,6 +1569,8 @@ function demoApi(path, body) {
   const L = (id, n, a, b, st, g, s, extra={}) => ({id, start: T(n,a), end: b!=null ? T(n,b) : null, status: st, group: g, subject: s, duration: a-(b??0), duration_text: durTxt(a-(b??0)), start_dist: 34, end_dist: 41, manual:false, ...extra});
   const G = [{id:1,name:'101-guruh',lessons:12},{id:2,name:'102-guruh',lessons:9},{id:3,name:'201-guruh',lessons:15}];
   const names = ['Aliyev Vali Karimovich','Karimova Aziza','Rahimov Bobur','Toshmatova Nilufar','Yusupov Sardor','Ergasheva Malika'];
+  if (path === '/api/roster') return {employees: names.map((n,i)=>({id:i+1, full_name:n, position:['Tarix fani o\'qituvchisi','Kotiba','Bosh buxgalter','Informatika fani o\'qituvchisi','Psixolog','Kutubxonachi'][i], mine:false}))};
+  if (path === '/api/admin/employees' && !body) return {total:33, linked:21, employees: names.map((n,i)=>({id:i+1, full_name:n, position:['Tarix fani o\'qituvchisi','Kotiba','Bosh buxgalter','Informatika fani o\'qituvchisi','Psixolog','Kutubxonachi'][i], linked:i%2===0, user_id:i%2===0?i+2:null, tg:i%2===0?{full_name:n,username:'user'+i}:null}))};
   if (QS.has('work')) { const w = demoWork(path, body, names, d, nowS); if (w) return w; }
   if (path === '/api/me' && QS.has('lock')) return {need_code:true, org:'Arnasoy texnikumi', user:{id:5,full_name:'Yangi odam'}};
   if (path === '/api/me') return {user:{id:1,full_name:'Karimova Aziza Rustamovna',is_admin:true,is_owner:true,registered:true}, org:'Arnasoy texnikumi', geo:{configured:true,required:true,radius:200},

@@ -99,6 +99,14 @@ CREATE TABLE IF NOT EXISTS lessons(
 CREATE INDEX IF NOT EXISTS ix_lessons_user ON lessons(user_id, start_ts);
 CREATE INDEX IF NOT EXISTS ix_lessons_start ON lessons(start_ts);
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS employees(
+    id {serial},
+    full_name TEXT NOT NULL,
+    position TEXT,
+    user_id BIGINT,
+    sort INTEGER DEFAULT 0,
+    created_at BIGINT
+);
 CREATE TABLE IF NOT EXISTS invites(
     id {serial},
     code TEXT UNIQUE NOT NULL,
@@ -329,6 +337,47 @@ def dur_text(sec: int | None) -> str:
     return f"{h} soat {m} daq" if h else f"{m} daq"
 
 
+# ---------------------------------------------------------------- xodimlar ro'yxati
+def name_key(name: str) -> set:
+    """Ism solishtirish uchun: familiya va ism (kichik harf, tutuq belgisiz)."""
+    t = [w for w in str(name or "").lower().replace("'", "").replace("`", "").replace("ʻ", "").split() if w]
+    return set(t[:2])
+
+
+def emp_dict(r, users: dict | None = None) -> dict:
+    u = (users or {}).get(r["user_id"]) if r["user_id"] else None
+    return {"id": r["id"], "full_name": r["full_name"], "position": r["position"] or "", "user_id": r["user_id"],
+            "linked": bool(r["user_id"]), "tg": ({"full_name": u["full_name"], "username": u["username"]} if u else None)}
+
+
+def employee_of(uid: int):
+    return q1("SELECT * FROM employees WHERE user_id=?", uid)
+
+
+def roster_size() -> int:
+    return q1("SELECT COUNT(*) c FROM employees")["c"]
+
+
+def autolink_employees() -> int:
+    """Ro'yxatdagi ism bilan mos keladigan, allaqachon ro'yxatdan o'tgan foydalanuvchilarni bog'laydi."""
+    linked = 0
+    users = q("SELECT * FROM users WHERE approved=1 AND registered=1")
+    taken = {r["user_id"] for r in q("SELECT user_id FROM employees WHERE user_id IS NOT NULL")}
+    for e in q("SELECT * FROM employees WHERE user_id IS NULL"):
+        ek = name_key(e["full_name"])
+        for u in users:
+            if u["id"] in taken:
+                continue
+            uk = set(str(u["full_name"] or "").lower().replace("'", "").replace("`", "").replace("ʻ", "").split())
+            if len(ek) == 2 and ek <= uk:
+                run("UPDATE employees SET user_id=? WHERE id=?", u["id"], e["id"])
+                run("UPDATE users SET full_name=? WHERE id=?", e["full_name"], u["id"])
+                taken.add(u["id"])
+                linked += 1
+                break
+    return linked
+
+
 # ---------------------------------------------------------------- kirish kodlari
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"   # chalkash belgilar (0/O, 1/I) yo'q
 
@@ -391,7 +440,7 @@ def redeem(uid: int, raw: str) -> tuple:
 NEED_CODE_TEXT = ("🔒 Assalomu alaykum!\n\nBu bot faqat texnikum o'qituvchilari uchun. "
                   "Kirish uchun admin bergan <b>kirish kodini</b> shu yerga yuboring.\n\n"
                   "Kod bo'lmasa, botdan foydalana olmaysiz — o'quv bo'limi yoki adminga murojaat qiling.")
-JOINED_TEXT = "\n\nIlovani ochib, familiya va ismingizni kiriting 👇"
+JOINED_TEXT = "\n\nIlovani ochib, ro'yxatdan o'z ismingizni tanlang 👇"
 
 
 # ---------------------------------------------------------------- QR va lokatsiya
@@ -875,6 +924,8 @@ async def api_me(request):
                 "workday_today": is_workday(t0)}
     return web.json_response({
         "mode": KIND(), "schedule": sched(), **work,
+        "roster_size": roster_size(),
+        "employee": (lambda e: {"id": e["id"], "full_name": e["full_name"], "position": e["position"] or ""} if e else None)(employee_of(u["id"])),
         "user": {"id": u["id"], "full_name": u["full_name"], "username": u["username"],
                  "is_admin": bool(u["is_admin"]), "is_owner": bool(u["is_owner"]),
                  "registered": bool(u["registered"])},
@@ -891,8 +942,33 @@ async def api_me(request):
     })
 
 
+async def api_roster(request):
+    """Ro'yxatdan o'tish uchun bo'sh (hali tanlanmagan) ismlar."""
+    me = request["user"]["id"]
+    rows = q("SELECT * FROM employees ORDER BY sort, full_name")
+    return web.json_response({"employees": [{"id": r["id"], "full_name": r["full_name"], "position": r["position"] or "",
+                                             "mine": r["user_id"] == me} for r in rows if not r["user_id"] or r["user_id"] == me]})
+
+
 async def api_register(request):
     b = await body(request)
+    me = request["user"]
+    if b.get("employee_id"):
+        eid = int(b["employee_id"])
+        e = q1("SELECT * FROM employees WHERE id=?", eid)
+        if not e:
+            return jerr("Bu ism ro'yxatda yo'q")
+        if e["user_id"] and e["user_id"] != me["id"]:
+            return jerr("Bu ism boshqa odam tomonidan tanlangan. Xato bo'lsa, adminga murojaat qiling")
+        cur = employee_of(me["id"])
+        if cur and cur["id"] != eid and me["registered"] and not me["is_admin"]:
+            return jerr("Siz ro'yxatdan o'tgansiz. Ismni o'zgartirish uchun adminga murojaat qiling")
+        run("UPDATE employees SET user_id=NULL WHERE user_id=?", me["id"])
+        run("UPDATE employees SET user_id=? WHERE id=?", me["id"], eid)
+        run("UPDATE users SET full_name=?, registered=1 WHERE id=?", e["full_name"], me["id"])
+        return web.json_response({"ok": True, "full_name": e["full_name"]})
+    if roster_size():
+        return jerr("Ro'yxatdan o'z ismingizni tanlang")
     name = clean(b.get("full_name"))
     if len(name) < 5 or len(name.split()) < 2:
         return jerr("Familiya va ismingizni to'liq yozing")
@@ -1001,6 +1077,8 @@ async def api_work_stats(request):
         "admins": [{"id": a["id"], "full_name": a["full_name"], "username": a["username"], "is_owner": bool(a["is_owner"])}
                    for a in users if a["is_admin"]],
         "pending": q1("SELECT COUNT(*) c FROM users WHERE approved=0")["c"],
+        "roster_total": roster_size(),
+        "roster_unlinked": q1("SELECT COUNT(*) c FROM employees WHERE user_id IS NULL")["c"],
     })
 
 
@@ -1044,6 +1122,8 @@ async def api_stats(request):
         "admins": [{"id": a["id"], "full_name": a["full_name"], "username": a["username"], "is_owner": bool(a["is_owner"])}
                    for a in teachers if a["is_admin"]],
         "pending": q1("SELECT COUNT(*) c FROM users WHERE approved=0")["c"],
+        "roster_total": roster_size(),
+        "roster_unlinked": q1("SELECT COUNT(*) c FROM employees WHERE user_id IS NULL")["c"],
     })
 
 
@@ -1190,6 +1270,7 @@ async def api_teacher_delete(request):
     if t and t["is_admin"] and not request["user"]["is_owner"]:
         return jerr("Adminni faqat bosh admin o'chira oladi")
     run("DELETE FROM lessons WHERE user_id=?", uid)
+    run("UPDATE employees SET user_id=NULL WHERE user_id=?", uid)
     run("DELETE FROM users WHERE id=?", uid)
     return web.json_response({"ok": True})
 
@@ -1373,6 +1454,79 @@ async def api_screen(request):
     })
 
 
+# ---------- admin: xodimlar ro'yxati
+async def api_employees(request):
+    users = {u["id"]: u for u in q("SELECT id, full_name, username FROM users")}
+    rows = q("SELECT * FROM employees ORDER BY sort, full_name")
+    return web.json_response({"employees": [emp_dict(r, users) for r in rows],
+                              "linked": sum(1 for r in rows if r["user_id"]), "total": len(rows)})
+
+
+async def api_employee_save(request):
+    b = await body(request)
+    name = clean(b.get("full_name"), 100)
+    if len(name.split()) < 2:
+        return jerr("Familiya va ismni to'liq yozing")
+    pos = clean(b.get("position"), 120)
+    eid = opt_int(b.get("id"))
+    if any(name_key(r["full_name"]) == name_key(name) and r["id"] != eid for r in q("SELECT id, full_name FROM employees")):
+        return jerr("Bu xodim ro'yxatda bor")
+    if eid:
+        run("UPDATE employees SET full_name=?, position=? WHERE id=?", name, pos, eid)
+        e = q1("SELECT * FROM employees WHERE id=?", eid)
+        if e and e["user_id"]:
+            run("UPDATE users SET full_name=? WHERE id=?", name, e["user_id"])
+    else:
+        n = q1("SELECT COALESCE(MAX(sort),0) m FROM employees")["m"]
+        eid = insert("INSERT INTO employees(full_name, position, sort, created_at) VALUES(?,?,?,?)", name, pos, n + 1, now())
+    return web.json_response({"ok": True, "id": eid})
+
+
+async def api_employee_import(request):
+    """Ko'p qatorli matn: har qatorda «F.I.Sh | Lavozim» (lavozim ixtiyoriy)."""
+    b = await body(request)
+    lines = [ln.strip() for ln in str(b.get("text", "")).splitlines() if ln.strip()]
+    if not lines:
+        return jerr("Ro'yxat bo'sh")
+    have = {frozenset(name_key(r["full_name"])) for r in q("SELECT full_name FROM employees")}
+    n = q1("SELECT COALESCE(MAX(sort),0) m FROM employees")["m"]
+    added = skipped = 0
+    for ln in lines[:500]:
+        for sep in ("|", "\t", " — ", " - "):
+            if sep in ln:
+                name, pos = ln.split(sep, 1)
+                break
+        else:
+            name, pos = ln, ""
+        name = clean(name.lstrip("0123456789.) "), 100)
+        if len(name.split()) < 2 or frozenset(name_key(name)) in have:
+            skipped += 1
+            continue
+        n += 1
+        insert("INSERT INTO employees(full_name, position, sort, created_at) VALUES(?,?,?,?)", name, clean(pos, 120), n, now())
+        have.add(frozenset(name_key(name)))
+        added += 1
+    linked = autolink_employees()
+    msg = f"{added} ta xodim qo'shildi" + (f", {skipped} tasi o'tkazib yuborildi" if skipped else "") + \
+          (f", {linked} tasi botdagi foydalanuvchi bilan bog'landi" if linked else "")
+    return web.json_response({"ok": True, "added": added, "skipped": skipped, "linked": linked, "message": msg})
+
+
+async def api_employee_unlink(request):
+    e = q1("SELECT * FROM employees WHERE id=?", int(request.match_info["eid"]))
+    if not e:
+        return jerr("Topilmadi", 404)
+    if e["user_id"]:
+        run("UPDATE users SET registered=0 WHERE id=? AND is_owner=0", e["user_id"])
+        run("UPDATE employees SET user_id=NULL WHERE id=?", e["id"])
+    return web.json_response({"ok": True, "message": "Bog'lanish olib tashlandi — u odam ismini qaytadan tanlaydi"})
+
+
+async def api_employee_delete(request):
+    run("DELETE FROM employees WHERE id=?", int(request.match_info["eid"]))
+    return web.json_response({"ok": True})
+
+
 # ---------- admin: kirish kodlari
 async def api_invites(request):
     rows = q("SELECT * FROM invites ORDER BY id DESC LIMIT 100")
@@ -1432,6 +1586,12 @@ def build_app() -> web.Application:
     r.add_get("/health", lambda req: web.Response(text="ok"))
     r.add_get("/api/me", api_me)
     r.add_post("/api/register", api_register)
+    r.add_get("/api/roster", api_roster)
+    r.add_get("/api/admin/employees", api_employees)
+    r.add_post("/api/admin/employees", api_employee_save)
+    r.add_post("/api/admin/employees/import", api_employee_import)
+    r.add_post("/api/admin/employees/{eid:\\d+}/unlink", api_employee_unlink)
+    r.add_post("/api/admin/employees/{eid:\\d+}/delete", api_employee_delete)
     r.add_post("/api/join", api_join)
     r.add_get("/api/admin/invites", api_invites)
     r.add_post("/api/admin/invites", api_invite_create)
