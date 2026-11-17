@@ -8,6 +8,17 @@
 
 Oddiy telefon kamerasi bilan skanerlansa ham ishlaydi: bot ochiladi va «📍 Tasdiqlash» tugmasi joylashuvni tekshiradi.
 
+## Ish rejimi: hodimlar davomati (standart)
+Admin panel → ⚙️ Sozlamalar → «🕗 Ish tartibi»da tanlanadi: **hodimlar ishga kelish-ketishi** yoki **o'qituvchilar darsga kirish-chiqishi**.
+Hodimlar rejimida:
+- Hodim ishga kelganda va ketganda QR skanerlaydi (GPS tekshiriladi), guruh/fan tanlanmaydi.
+- Jadval (o'zgartiriladi): ish 08:00–15:00, 10 daqiqagacha kechikishga ruxsat, tushlik 12:30–14:00, ish kunlari Du–Sh.
+- 08:10 dan keyin kelsa — kechikish (08:00 dan hisoblanadi), 15:00 dan oldin ketsa — erta ketish. Tushlik ishlangan vaqtdan ayiriladi.
+- Ketish belgilanmasa, kun oxirida «ketish belgilanmagan» deb yopiladi.
+- Statistika: bugun kelganlar, kechikkanlar, hozir ishda, kelmaganlar, oy bo'yicha eng ko'p kechikkanlar.
+- Excel hisobot: har bir hodim — ish kunlari, kelgan/kelmagan, kechikishlar soni va daqiqasi, erta ketishlar, jami soat; va kunlik batafsil.
+Dars rejimiga qaytsangiz, ish yozuvlari o'chmaydi (va aksincha).
+
 ## Kirish kodi (faqat ruxsat berilganlar)
 Botga yangi odam /start bosganda «admin bergan kirish kodini yuboring» degan javob oladi — kodsiz bot ham, ilova ham ishlamaydi.
 - **🔑 Kodlar** bo'limida kod yaratiladi: o'qituvchi uchun (1 / 5 / 20 / 50 / 200 kishilik, muddati bilan) yoki admin uchun.

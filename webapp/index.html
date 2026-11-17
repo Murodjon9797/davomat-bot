@@ -290,6 +290,12 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
 .tag.wait{background:#ffe1e7;color:#b3264a}
 .tag.off{background:#e7e6f0;color:#8c89ad}
 .row-i.inv-off{opacity:.55}
+body.mode-work .lesson-only{display:none!important}
+body:not(.mode-work) .work-only{display:none!important}
+.st-late{background:linear-gradient(145deg,#ffb38a,#f0703d)}
+.tag.late{background:#ffe2d3;color:#b34a12}
+.tag.early{background:#fff1c9;color:#8a6200}
+.chip.on{box-shadow:var(--sh-in);color:var(--navy2);background:#dedcf3}
 </style>
 </head>
 <body>
@@ -367,9 +373,11 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
       <div class="pane" id="p-stats">
         <div id="geoWarn"></div>
         <div class="stats4" id="stTiles"></div>
-        <div class="dark-panel" style="padding-right:18px;margin-top:22px"><h3 style="padding-right:0"><span>🟢 Hozir darsda</span><span id="nowCount"></span></h3><div id="nowList"></div></div>
-        <div class="dark-panel" style="margin-top:16px"><h3><span>Oxirgi 7 kun (darslar soni)</span></h3><div class="days" id="chart" style="height:150px"></div></div>
-        <div class="sec-h"><span>🏆 Bu oy eng ko'p dars o'tganlar</span></div>
+        <div class="dark-panel" style="padding-right:18px;margin-top:22px"><h3 style="padding-right:0"><span id="nowTitle">🟢 Hozir darsda</span><span id="nowCount"></span></h3><div id="nowList"></div></div>
+        <div class="dark-panel" style="margin-top:16px"><h3><span id="chartTitle">Oxirgi 7 kun (darslar soni)</span></h3><div class="days" id="chart" style="height:150px"></div></div>
+        <div class="work-only"><div class="sec-h"><span>⏰ Bugun kechikkanlar</span><span id="lateCount"></span></div>
+        <div class="list" id="lateList"></div></div>
+        <div class="sec-h"><span id="rankTitle">🏆 Bu oy eng ko'p dars o'tganlar</span></div>
         <div class="list" id="rankList"></div>
         <div class="sec-h"><span>Bugun hali kelmaganlar</span><span id="absCount"></span></div>
         <div class="list" id="absList"></div>
@@ -381,7 +389,7 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
             <button class="chip" data-r="0">Bugun</button><button class="chip" data-r="6">7 kun</button><button class="chip" data-r="29">30 kun</button><button class="chip" data-r="month">Shu oy</button>
           </div>
           <button class="btn" id="repBtn">Hisobotni botga yuborish</button>
-          <p class="hint">Ikkita fayl keladi: umumiy (har bir o'qituvchi bo'yicha jami soat) va batafsil (har bir dars).</p>
+          <p class="hint" id="repHint">Ikkita fayl keladi: umumiy (har bir o'qituvchi bo'yicha jami soat) va batafsil (har bir dars).</p>
         </div>
       </div>
 
@@ -456,7 +464,28 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
 
       <!-- SOZLAMALAR -->
       <div class="pane hidden" id="p-set">
-        <div class="sec-h" style="margin-top:4px"><span>📍 Texnikum lokatsiyasi</span></div>
+        <div class="sec-h" style="margin-top:4px"><span>🕗 Ish tartibi</span></div>
+        <div class="box form">
+          <label class="lb">Bot nima uchun ishlatiladi</label>
+          <select class="inp" id="setMode"><option value="work">👥 Hodimlar: ishga kelish-ketish</option><option value="lesson">📚 O'qituvchilar: darsga kirish-chiqish</option></select>
+          <div id="schedBox">
+            <div class="row2" style="margin-top:12px">
+              <div class="form"><label class="lb">Ish boshlanishi</label><input class="inp" type="time" id="scStart"></div>
+              <div class="form"><label class="lb">Ish tugashi</label><input class="inp" type="time" id="scEnd"></div>
+            </div>
+            <div class="row2" style="margin-top:12px">
+              <div class="form"><label class="lb">Tushlik boshlanishi</label><input class="inp" type="time" id="scL1"></div>
+              <div class="form"><label class="lb">Tushlik tugashi</label><input class="inp" type="time" id="scL2"></div>
+            </div>
+            <div class="kv" style="margin-top:14px"><span>Kechikishga ruxsat</span><span id="graceTxt">10 daq</span></div>
+            <input type="range" class="range" id="scGrace" min="0" max="60" step="1" value="10">
+            <label class="lb" style="display:block;margin:12px 0 0 6px">Ish kunlari</label>
+            <div class="chips" id="scDays" style="padding-top:8px"></div>
+          </div>
+          <button class="btn" id="saveSched">Saqlash</button>
+          <p class="hint">Tushlik vaqti ishlangan soatdan avtomatik ayiriladi. Ruxsat etilgan vaqtdan keyin kelganlar «kechikdi» deb belgilanadi.</p>
+        </div>
+        <div class="sec-h"><span>📍 Texnikum lokatsiyasi</span></div>
         <div class="box form">
           <iframe class="map hidden" id="map" loading="lazy" referrerpolicy="no-referrer"></iframe>
           <div class="loc-card" id="locState" style="margin-top:0"></div>
@@ -468,12 +497,12 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
           <div class="switch"><span>Lokatsiya tekshiruvi</span><button class="tg on" id="setGeo"></button></div>
           <button class="btn" id="saveGeo">Saqlash</button>
         </div>
-        <div class="sec-h"><span>⏱ Dars sozlamalari</span></div>
+        <div class="sec-h"><span id="miscTitle">⏱ Dars sozlamalari</span></div>
         <div class="box form">
           <label class="lb">Muassasa nomi</label>
           <input class="inp" id="setOrg" maxlength="60" placeholder="Masalan: Arnasoy texnikumi">
-          <div class="kv"><span>Chiqish belgilanmasa, dars yopiladi</span><span id="mhTxt">4 soat</span></div>
-          <input type="range" class="range" id="setMh" min="1" max="12" step="0.5" value="4">
+          <div class="lesson-only"><div class="kv"><span>Chiqish belgilanmasa, dars yopiladi</span><span id="mhTxt">4 soat</span></div>
+          <input type="range" class="range" id="setMh" min="1" max="12" step="0.5" value="4"></div>
           <button class="btn" id="saveMisc">Saqlash</button>
         </div>
         <div class="sec-h"><span>🔳 Davomat QR kodi</span><span id="qrVer"></span></div>
@@ -523,9 +552,9 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
   <h2 id="tName">—</h2>
   <div class="center-sub" id="tSub"></div>
   <div class="meta">
-    <div class="stat"><b id="tLes" style="color:var(--accent)">0</b><small>dars (oy)</small></div>
+    <div class="stat"><b id="tLes" style="color:var(--accent)">0</b><small id="tLesL">dars (oy)</small></div>
     <div class="stat"><b id="tHrs" style="color:var(--ok);font-size:17px;line-height:1.6">0</b><small>jami vaqt</small></div>
-    <div class="stat"><b id="tForgot" style="color:var(--warn)">0</b><small>chiqish yo'q</small></div>
+    <div class="stat"><b id="tForgot" style="color:var(--warn)">0</b><small id="tForgotL">chiqish yo'q</small></div>
   </div>
   <div class="box form" style="margin-top:22px">
     <label class="lb">Familiya, ism</label>
@@ -571,11 +600,11 @@ label.lb{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 -6px 6px}
     <div class="k-top">
       <div><div class="k-clock" id="kClock">00:00</div><div class="k-date" id="kDate"></div></div>
       <div class="k-stats">
-        <div class="k-stat"><b id="kNow" style="color:#7ff0c6">0</b><small>hozir darsda</small></div>
-        <div class="k-stat"><b id="kToday">0</b><small>bugungi dars</small></div>
+        <div class="k-stat"><b id="kNow" style="color:#7ff0c6">0</b><small id="kNowL">hozir darsda</small></div>
+        <div class="k-stat"><b id="kToday">0</b><small id="kTodayL">bugungi dars</small></div>
       </div>
     </div>
-    <div class="k-panel" style="flex:1.3"><h3><span>🟢 Hozir darsda</span><span id="kNowTxt"></span></h3><div class="k-list" id="kNowList"></div></div>
+    <div class="k-panel" style="flex:1.3"><h3><span id="kNowTitle">🟢 Hozir darsda</span><span id="kNowTxt"></span></h3><div class="k-list" id="kNowList"></div></div>
     <div class="k-panel" style="flex:1;margin-top:1.4vw"><h3><span>🕘 So'nggi harakatlar</span></h3><div class="k-list" id="kEvents"></div></div>
   </div>
   <div class="k-flash" id="kFlash"><div id="kFlashTxt"></div></div>
@@ -703,8 +732,116 @@ function getLocation() {
   });
 }
 
+/* ================= REJIM (hodimlar / darslar) ================= */
+const isWork = () => (ME && ME.mode === 'work');
+function applyMode() {
+  const w = isWork();
+  document.body.classList.toggle('mode-work', w);
+  if (!w) return;
+  document.title = 'Hodimlar davomati';
+  const set = (sel, txt) => document.querySelectorAll(sel).forEach(el => el.textContent = txt);
+  set('#nowTitle', '🟢 Hozir ishda'); set('#chartTitle', 'Oxirgi 7 kun (kelganlar soni)');
+  set('#rankTitle', '⏰ Bu oy eng ko\'p kechikkanlar');
+  set('#repHint', "Ikkita fayl keladi: umumiy (har bir hodim: kelgan/kelmagan kunlar, kechikishlar, jami ish soati) va kunlik batafsil.");
+  set('#miscTitle', '⚙️ Boshqa sozlamalar');
+  set('#tLesL', 'kun (oy)'); set('#tForgotL', 'kechikish');
+  set('#tDel', "Hodimni o'chirish");
+  set('.k-sub', 'Hodimlar davomati');
+  const kh = document.querySelector('.k-hint'); if (kh) kh.firstChild.textContent = '📲 Ishga kelganda va ketganda skanerlang';
+  set('#kNowL', 'hozir ishda'); set('#kTodayL', 'bugun keldi');
+  set('#kNowTitle', '🟢 Hozir ishda');
+  document.querySelector('#tabs [data-p="grp"]').classList.add('hidden');
+  document.querySelector('#tabs [data-p="tch"]').textContent = '👥 Hodimlar';
+  $('jGroup').classList.add('hidden');
+  $('jStatus').innerHTML = `<option value="">Barcha holat</option><option value="late">⏰ Kechikkanlar</option><option value="early">🏃 Erta ketganlar</option><option value="open">🟢 Hozir ishda</option><option value="forgot">🟠 Ketish belgilanmagan</option>`;
+  const mt = $('msgTarget');
+  mt.querySelector('[value=all]').textContent = '📣 Barcha hodimlarga';
+  mt.querySelector('[value=absent_today]').textContent = '🕘 Bugun hali kelmaganlarga';
+  document.querySelectorAll('.sec-h span').forEach(sp => {
+    if (sp.textContent === 'Bugungi darslar') sp.textContent = 'Bugun';
+    if (sp.textContent === 'Oldingi darslar') sp.textContent = 'Oldingi kunlar';
+    if (sp.textContent === 'Darslar tarixi') sp.textContent = 'Ish tarixi';
+  });
+}
+const WD_SHORT = ['', 'Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'];
+function dayLabel(date) { const dt = new Date(date + 'T00:00'); return `${dt.getDate()} ${MONTHS_L[dt.getMonth()]}, ${WD[dt.getDay()]}`; }
+function dayRow(d, {who=false, admin=false} = {}) {
+  const cls = d.open ? 'st-open' : d.forgot ? 'st-forgot' : d.late_min ? 'st-late' : 'st-done';
+  const ic = d.open ? '▶' : d.forgot ? '!' : d.late_min ? '⏰' : '✓';
+  const out = d.open ? 'hozir ishda' : d.out || "ketish yo'q";
+  const tags = (d.late_min ? `<span class="tag late">${d.late_min} daq kechikdi</span>` : '') +
+               (d.early_min ? `<span class="tag early">${d.early_min} daq erta ketdi</span>` : '') +
+               (d.manual ? '<span class="tag">tahrir</span>' : '');
+  return `<${admin?'button':'div'} class="row-i" ${admin?`data-day="${d.ids.join(',')}"`:''}>
+    <span class="les-ic ${cls}">${ic}</span>
+    <div class="mid"><b>${esc(who ? d.full_name : dayLabel(d.date))}${tags}</b>
+      <small>${who ? dayLabel(d.date) + ' · ' : ''}${d.in} → ${out}${admin && d.dist != null ? ' · 📍' + d.dist + ' m' : ''}</small></div>
+    <time ${d.open ? 'style="color:var(--accent)"' : ''}>${d.worked_text || '—'}</time>
+  </${admin?'button':'div'}>`;
+}
+async function workDayMenu(d) {
+  const txt = `${dayLabel(d.date)}\nKeldi: ${d.in}` + (d.out ? ` · Ketdi: ${d.out}` : '') + `\nIshlagan: ${d.worked_text || '—'}` +
+              (d.late_min ? `\nKechikish: ${d.late_min} daq` : '') + (d.early_min ? `\nErta ketish: ${d.early_min} daq` : '');
+  const btns = [];
+  if (d.open) btns.push({label:'⏹ Hozir ketdi', value:'now'});
+  btns.push({label:'🕐 Ketish vaqti', cls:'light', value:'time'});
+  btns.push({label:"🗑 O'chirish", cls:'bad', value:'del'}, {label:'Yopish', cls:'light', value:null});
+  const v = await modal({title: d.full_name || dayLabel(d.date), text: txt, buttons: btns});
+  if (v === 'now') { if (await act(`/api/admin/lessons/${d.last_id}`, {end_now:true}, 'Ketish belgilandi')) refreshAfterLesson(); }
+  if (v === 'time') { const t = await promptBox('Ishdan ketish vaqti (shu kun)', d.out || '', 'time'); if (t && await act(`/api/admin/lessons/${d.last_id}`, {end_time:t}, 'Saqlandi')) refreshAfterLesson(); }
+  if (v === 'del' && await confirmBox("Kun yozuvini o'chirish?", "Bu hodimning shu kundagi kelish-ketish yozuvlari o'chadi.", "O'chirish")) {
+    let ok = true; for (const id of d.ids) ok = !!(await act(`/api/admin/lessons/${id}/delete`, {}, ' ')) && ok;
+    if (ok) { toast("O'chirildi"); refreshAfterLesson(); }
+  }
+}
+function lateNowMin() {
+  const sc = ME.schedule, n = new Date(), [h, m] = sc.start.split(':').map(Number);
+  const st = new Date(n); st.setHours(h, m, 0, 0);
+  const diff = Math.floor((n - st) / 60000);
+  return diff > sc.grace ? diff : 0;
+}
+
 /* ================= O'QITUVCHI ================= */
+function renderHomeWork() {
+  const u = ME.user, tw = ME.today_work, m = ME.work_month || {}, sc = ME.schedule;
+  $('avatar').textContent = initials(u.full_name);
+  $('hello').textContent = `Salom, ${u.full_name.split(' ')[1] || u.full_name.split(' ')[0]}!`;
+  const d = new Date(); $('todayDate').textContent = `${d.getDate()} ${MONTHS_L[d.getMonth()]}`;
+  $('monthTxt').textContent = `${m.days || 0} kun · ${m.hours_text || '0 daq'}${m.late ? ` · ${m.late} kechikish` : ''}`;
+  clearInterval(liveT);
+  $('liveBox').classList.add('hidden');
+  if (tw && tw.open) {
+    $('stateIcon').innerHTML = `<span style="font-size:24px">🟢</span>`;
+    $('stateTitle').textContent = 'Ishdasiz';
+    $('stateSub').textContent = `${tw.in} da keldingiz · ` + (tw.late_min ? `${tw.late_min} daq kechikdingiz` : "o'z vaqtida") + ` · ish ${sc.end} gacha`;
+    $('liveBox').classList.remove('hidden');
+    const base = tw.worked, t0 = Date.now(), lunch = () => { const n = new Date(), [a,b] = sc.lunch_start.split(':').map(Number), [c,e] = sc.lunch_end.split(':').map(Number);
+      const l1 = new Date(n), l2 = new Date(n); l1.setHours(a,b,0,0); l2.setHours(c,e,0,0); return n >= l1 && n < l2; };
+    let acc = base; let last = Date.now();
+    const tick = () => { const n = Date.now(); if (!lunch()) acc += (n - last) / 1000; last = n; $('liveTimer').textContent = hms(acc); };
+    tick(); liveT = setInterval(tick, 1000);
+  } else if (tw) {
+    $('stateIcon').innerHTML = `<span style="font-size:24px">🏁</span>`;
+    $('stateTitle').textContent = tw.forgot ? "Ketish belgilanmagan" : 'Bugungi ish tugadi';
+    $('stateSub').textContent = `${tw.in} → ${tw.out || '—'} · ishlagan ${tw.worked_text || '0 daq'}` + (tw.late_min ? ` · ${tw.late_min} daq kechikkan` : '');
+  } else {
+    $('stateIcon').innerHTML = `<span style="font-size:24px">🚪</span>`;
+    $('stateTitle').textContent = 'Ishda emassiz';
+    $('stateSub').textContent = ME.workday_today
+      ? `Ish ${sc.start} da boshlanadi (${sc.grace} daq ruxsat), tushlik ${sc.lunch_start}–${sc.lunch_end}, tugash ${sc.end}. Kelganda QR skanerlang`
+      : 'Bugun dam olish kuni';
+  }
+  $('todayCount').textContent = '';
+  $('todayList').innerHTML = tw ? dayRow(tw) : `<div class="empty">${ME.workday_today ? 'Bugun hali kelish belgilanmagan.' : 'Bugun dam olish kuni.'}</div>`;
+  const hist = ME.work_history || [];
+  $('histList').innerHTML = hist.length ? hist.map(x => dayRow(x)).join('') : `<div class="empty">Tarix bo'sh</div>`;
+  const on = new Set(hist.map(x => x.date).concat(tw ? [tw.date] : [])), late = new Set(hist.filter(x => x.late_min).map(x => x.date)), days = [];
+  for (let i = 0; i < 14; i++) days.push(new Date(Date.now() - i*864e5));
+  $('days').innerHTML = days.map(d => `<div class="day ${on.has(ymd(d))?'on':''}"><span class="dot" ${late.has(ymd(d)) ? 'style="background:#f0703d"' : ''}></span>${d.getDate()}<small>${MONTHS[d.getMonth()]}</small></div>`).join('');
+}
+
 function renderHome() {
+  if (isWork()) return renderHomeWork();
   const u = ME.user, o = ME.open, m = ME.month;
   $('avatar').textContent = initials(u.full_name);
   $('hello').textContent = `Salom, ${u.full_name.split(' ')[1] || u.full_name.split(' ')[0]}!`;
@@ -741,6 +878,24 @@ async function handleCode(code) {
   try { loc = await getLocation(); }
   catch (e) { if (ME.geo.configured && ME.geo.required) return showResult(false, 'Joylashuv kerak', e.message); }
   pendingLoc = loc;
+  if (isWork()) {
+    const n = new Date(), hm = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+    if (ME.open) {
+      const tw = ME.today_work;
+      if (!await modal({icon:'🏁', title:'Ishdan ketish', text:`Hozir: ${hm}\nKelgan vaqt: ${tw ? tw.in : ME.open.start.time}\nIsh tugashi: ${ME.schedule.end}`,
+                        buttons:[{label:'Bekor', cls:'light', value:false},{label:'Ketdim', cls:'ok', value:true}]})) return;
+      try { const r = await api('/api/scan', {action:'end', code, ...(loc||{})}); await showResult(true, 'Xayr, yaxshi dam oling!', r.message); }
+      catch (e) { return showResult(false, 'Qabul qilinmadi', e.message); }
+    } else {
+      const first = !ME.today_work, late = first ? lateNowMin() : 0;
+      if (!await modal({icon: late ? '⏰' : '🏢', title: first ? 'Ishga keldim' : 'Qaytib keldim',
+                        text: `Hozir: ${hm}` + (first ? (late ? `\n${late} daqiqa kechikish qayd etiladi` : "\nO'z vaqtida ✅") : ''),
+                        buttons:[{label:'Bekor', cls:'light', value:false},{label:'Tasdiqlash', cls:'ok', value:true}]})) return;
+      try { const r = await api('/api/scan', {action:'start', code, ...(loc||{})}); await showResult(true, r.late_min ? 'Qayd etildi' : 'Xush kelibsiz!', r.message); }
+      catch (e) { return showResult(false, 'Qabul qilinmadi', e.message); }
+    }
+    return reloadMe();
+  }
   if (ME.open) {
     const o = ME.open, dur = durTxt(Date.now()/1000 - o.start.ts);
     if (!await modal({icon:'🏁', title:'Darsdan chiqish', text:`${lesTitle(o)}\nKirgan vaqt: ${o.start.time} · ${dur}`,
@@ -774,10 +929,11 @@ async function reloadMe() { ME = await api('/api/me'); GROUPS = ME.groups; rende
 $('scanBtn').onclick = () => {
   haptic();
   if (DEMO) return handleCode('demo');
-  if (IS_DESKTOP) return modal({icon:'📱', title:'Telefondan skanerlang', text:'Darsga kirish va chiqishni telefoningizdagi Telegram orqali belgilang — u yerda kamera va joylashuv bor.\n\nKompyuterda jurnal, statistika va sozlamalar bilan ishlashingiz mumkin.', buttons:[{label:'Tushunarli', value:true}]});
+  if (IS_DESKTOP) return modal({icon:'📱', title:'Telefondan skanerlang', text:(isWork() ? 'Ishga kelish va ketishni' : 'Darsga kirish va chiqishni') + ' telefoningizdagi Telegram orqali belgilang — u yerda kamera va joylashuv bor.\n\nKompyuterda jurnal, statistika va sozlamalar bilan ishlashingiz mumkin.', buttons:[{label:'Tushunarli', value:true}]});
   if (!tg?.showScanQrPopup || !tg.isVersionAtLeast?.('6.4')) return toast('QR skaner faqat Telegram ilovasida ishlaydi');
   let done = false;
-  tg.showScanQrPopup({text: ME.open ? 'Darsdan chiqish: QR kodni skanerlang' : 'Darsga kirish: QR kodni skanerlang'}, text => {
+  tg.showScanQrPopup({text: isWork() ? (ME.open ? 'Ishdan ketish: QR kodni skanerlang' : 'Ishga kelish: QR kodni skanerlang')
+                                      : (ME.open ? 'Darsdan chiqish: QR kodni skanerlang' : 'Darsga kirish: QR kodni skanerlang')}, text => {
     if (done) return true; done = true; tg.closeScanQrPopup(); setTimeout(() => handleCode(text), 300); return true;
   });
 };
@@ -805,9 +961,44 @@ async function refreshGroups() { GROUPS = (await api('/api/admin/groups')).group
 const teacherOpts = (label) => `<option value="">${label}</option>` + TEACHERS.map(t => `<option value="${t.id}">${esc(t.full_name)}</option>`).join('');
 
 /* ---- statistika ---- */
+function renderWorkStats(s) {
+  $('adminSub').textContent = `${s.staff} hodim · bugun ${s.today.present} kishi keldi`;
+  $('geoWarn').innerHTML = s.geo.configured ? '' : `<button class="loc-card" style="width:100%;margin:0 0 18px;background:#fff4dc" onclick="showPane('set')"><span class="li">📍</span><div>Texnikum lokatsiyasi kiritilmagan<small>Hozir hodimlar istalgan joydan belgilay oladi. Sozlash uchun bosing →</small></div></button>`;
+  const sc = s.schedule;
+  const tiles = [['👥', s.staff, 'hodim', '#7b61ff'], ['✅', s.today.present, 'bugun keldi', '#2fb98a'],
+                 ['⏰', s.today.late, 'kechikdi', '#f0703d'], ['🏢', s.today.now_in, 'hozir ishda', '#5b8cff']];
+  $('stTiles').innerHTML = tiles.map(t => `<div class="st"><span class="si" style="font-size:20px">${t[0]}</span><div><b style="color:${t[3]}">${t[1]}</b><small>${t[2]}</small></div></div>`).join('') +
+    `<div class="st" style="grid-column:1/-1"><span class="si">🕗</span><div><b style="font-size:15px">${sc.start}–${sc.end} · tushlik ${sc.lunch_start}–${sc.lunch_end}</b><small>${s.workday_today ? `${sc.grace} daqiqagacha kechikishga ruxsat` : 'bugun dam olish kuni'}</small></div></div>` +
+    (s.pending ? `<button class="st" style="grid-column:1/-1;text-align:left" onclick="showPane('inv')"><span class="si">⏳</span><div><b style="font-size:16px">${s.pending} kishi kod kutmoqda</b><small>ruxsat berish uchun bosing →</small></div></button>` : '') +
+    (s.unregistered ? `<div class="st" style="grid-column:1/-1"><span class="si">⚠️</span><div><b style="font-size:16px">${s.unregistered} kishi</b><small>profilini to'ldirmagan</small></div></div>` : '');
+  $('nowCount').textContent = s.now_in.length || '';
+  $('nowList').innerHTML = s.now_in.length ? s.now_in.map(d => `<div class="live-row">${av(d.full_name)}<div><b>${esc(d.full_name)}</b><small>${d.in} da keldi${d.late_min ? ` · ${d.late_min} daq kechikdi` : ''}</small></div><time>${d.worked_text}</time></div>`).join('')
+    : `<div style="color:#a5a2d6;font-size:14px;padding:4px 0 8px">Hozir hech kim ishda emas</div>`;
+  const mx = Math.max(1, ...s.days.map(d => d.present));
+  $('chart').innerHTML = s.days.map(d => { const dt = new Date(d.date + 'T00:00');
+    return `<div class="day chart ${d.present?'on':''}" style="height:${56 + Math.round(d.present/mx*84)}px" title="${d.late} kechikkan"><b>${d.workday || d.present ? d.present : '—'}</b><small>${WD[dt.getDay()]} ${dt.getDate()}</small></div>`; }).join('');
+  $('lateCount').textContent = s.late_today.length || '';
+  $('lateList').innerHTML = s.late_today.length ? s.late_today.map(d => `<button class="row-i" data-uid="${d.user_id}"><span class="les-ic st-late">⏰</span><div class="mid"><b>${esc(d.full_name)}</b><small>${d.in} da keldi</small></div><time style="color:#f0703d">${d.late_min} daq</time></button>`).join('')
+    : `<div class="empty">${s.workday_today ? 'Bugun kechikkanlar yo\'q 👍' : 'Bugun dam olish kuni'}</div>`;
+  $('rankList').innerHTML = s.ranking.length ? s.ranking.map((r,i) => `
+    <button class="row-i" data-uid="${r.id}"><span class="av" style="background:linear-gradient(145deg,#ffb38a,#f0703d)">${i+1}</span>
+      <div class="mid"><b>${esc(r.full_name)}</b><small>${r.late} marta kechikkan · ${r.days} kun kelgan${r.absent ? ` · ${r.absent} kun kelmagan` : ''}</small></div><time>${r.late_min} daq</time></button>`).join('')
+    : `<div class="empty">Bu oy kechikkanlar yo'q 👍</div>`;
+  $('absCount').textContent = s.absent_today.length || '';
+  $('absList').innerHTML = s.absent_today.length ? s.absent_today.map(t => `<button class="row-i" data-uid="${t.id}">${av(t.full_name)}<div class="mid"><b>${esc(t.full_name)}</b><small>${s.work_started ? 'bugun ishga kelmagan' : 'hali kelmagan'}</small></div></button>`).join('')
+    : `<div class="empty">${s.workday_today ? 'Hamma ishga kelgan 🎉' : 'Bugun dam olish kuni'}</div>`;
+  document.querySelectorAll('#rankList [data-uid], #absList [data-uid], #lateList [data-uid]').forEach(b => b.onclick = () => openTeacher(+b.dataset.uid));
+}
+
 async function loadStats() {
   try {
     const s = await api('/api/admin/stats');
+    if (s.mode === 'work') {
+      renderWorkStats(s);
+      await refreshTeachers(); $('repUser').innerHTML = teacherOpts('Barcha hodimlar');
+      if (!$('repFrom').value) setRange('month');
+      return;
+    }
     $('adminSub').textContent = `${s.teachers} o'qituvchi · bugun ${s.today.lessons} dars`;
     $('geoWarn').innerHTML = s.geo.configured ? '' : `<button class="loc-card" style="width:100%;margin:0 0 18px;background:#fff4dc" onclick="showPane('set')"><span class="li">📍</span><div>Texnikum lokatsiyasi kiritilmagan<small>Hozir o'qituvchilar istalgan joydan belgilay oladi. Sozlash uchun bosing →</small></div></button>`;
     const tiles = [['👨‍🏫', s.teachers, "o'qituvchi", '#7b61ff'], ['🟢', s.now_in.length, 'hozir darsda', '#2fb98a'],
@@ -844,6 +1035,16 @@ async function loadJournal() {
     if (!$('jFrom').value) { $('jFrom').value = $('jTo').value = ymd(new Date()); }
     if (!$('jUser').options.length) { await refreshTeachers(); $('jUser').innerHTML = teacherOpts('Barcha o\'qituvchilar'); }
     if (!$('jGroup').options.length) { await refreshGroups(); $('jGroup').innerHTML = `<option value="">Barcha guruhlar</option>` + GROUPS.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join(''); }
+    if (isWork()) {
+      if ($('jUser').options[0]?.textContent !== 'Barcha hodimlar') $('jUser').innerHTML = teacherOpts('Barcha hodimlar');
+      const pw = new URLSearchParams({from: $('jFrom').value, to: $('jTo').value, user: $('jUser').value, wstate: $('jStatus').value});
+      const rw = await api('/api/admin/lessons?' + pw);
+      const secs = rw.days.reduce((a, d) => a + d.worked, 0), late = rw.days.filter(d => d.late_min).length;
+      $('jCount').textContent = `${rw.days.length} ta yozuv${late ? ` · ${late} kechikish` : ''}`; $('jHours').textContent = secs ? 'jami ' + durTxt(secs) : '';
+      $('jList').innerHTML = rw.days.length ? rw.days.map(d => dayRow(d, {who:true, admin:true})).join('') : `<div class="empty">Bu oraliqda yozuvlar yo'q</div>`;
+      $('jList').querySelectorAll('[data-day]').forEach(b => b.onclick = () => workDayMenu(rw.days.find(x => x.ids.join(',') === b.dataset.day)));
+      return;
+    }
     const p = new URLSearchParams({from: $('jFrom').value, to: $('jTo').value, user: $('jUser').value, group: $('jGroup').value, status: $('jStatus').value});
     const r = await api('/api/admin/lessons?' + p);
     const secs = r.lessons.filter(l => l.status === 'done').reduce((a, l) => a + l.duration, 0);
@@ -875,10 +1076,11 @@ async function loadTeachers() {
     $('tCount').textContent = `${r.teachers.length} ta foydalanuvchi`;
     $('tList').innerHTML = r.teachers.length ? r.teachers.map(t => `
       <button class="row-i" data-uid="${t.id}">${av(t.full_name)}
-        <div class="mid"><b>${esc(t.full_name)}${t.is_owner?'<span class="tag owner">bosh admin</span>':t.is_admin?'<span class="tag admin">admin</span>':''}${!t.approved?'<span class="tag wait">kod kutmoqda</span>':!t.registered?'<span class="tag">yangi</span>':''}${t.in_lesson?'<span class="tag" style="background:#d6fbe9;color:#18805c">darsda</span>':''}</b>
-        <small>${t.month.lessons} dars${t.month.forgot?` · ${t.month.forgot} ta chiqish yo'q`:''}${t.username?' · @'+esc(t.username):''}</small></div>
+        <div class="mid"><b>${esc(t.full_name)}${t.is_owner?'<span class="tag owner">bosh admin</span>':t.is_admin?'<span class="tag admin">admin</span>':''}${!t.approved?'<span class="tag wait">kod kutmoqda</span>':!t.registered?'<span class="tag">yangi</span>':''}${t.in_lesson?`<span class="tag" style="background:#d6fbe9;color:#18805c">${isWork()?'ishda':'darsda'}</span>`:''}</b>
+        <small>${isWork() ? `${t.month.days} kun${t.month.late?` · ${t.month.late} kechikish`:''}${t.month.absent?` · ${t.month.absent} kun kelmagan`:''}`
+                          : `${t.month.lessons} dars${t.month.forgot?` · ${t.month.forgot} ta chiqish yo'q`:''}`}${t.username?' · @'+esc(t.username):''}</small></div>
         <time>${t.month.hours_text || '—'}</time></button>`).join('')
-      : `<div class="empty">Hech kim topilmadi.<br>O'qituvchilar botga /start bosganda shu yerda paydo bo'ladi.</div>`;
+      : `<div class="empty">Hech kim topilmadi.<br>${isWork() ? 'Hodimlar' : "O'qituvchilar"} kod bilan ro'yxatdan o'tganda shu yerda paydo bo'ladi.</div>`;
     $('tList').querySelectorAll('[data-uid]').forEach(b => b.onclick = () => openTeacher(+b.dataset.uid));
   } catch (e) { toast(e.message); }
 }
@@ -900,8 +1102,15 @@ async function openTeacher(uid) {
     $('tAdminRow').classList.toggle('hidden', t.is_owner || !owner || self);
     $('tDel').classList.toggle('hidden', t.is_owner || self || (t.is_admin && !owner));
     if (t.joined_via) $('tSub').textContent += ' · kod: ' + t.joined_via;
+    if (isWork() && t.work_history) {
+      const wm = t.work_month;
+      $('tLes').textContent = wm.days; $('tHrs').textContent = wm.hours_text || '0'; $('tForgot').textContent = wm.late;
+      $('tHist').innerHTML = t.work_history.length ? t.work_history.map(d => dayRow({...d, full_name: t.full_name}, {admin:true})).join('') : `<div class="empty">Yozuvlar yo'q</div>`;
+      $('tHist').querySelectorAll('[data-day]').forEach(bt => bt.onclick = () => workDayMenu({...t.work_history.find(x => x.ids.join(',') === bt.dataset.day), full_name: t.full_name}));
+    } else {
     $('tHist').innerHTML = t.history.length ? t.history.map(l => lessonRow({...l, full_name: t.full_name}, {admin:true})).join('') : `<div class="empty">Darslar yo'q</div>`;
     $('tHist').querySelectorAll('[data-lid]').forEach(bt => bt.onclick = () => lessonMenu({...t.history.find(x => x.id == bt.dataset.lid), full_name: t.full_name}));
+    }
   } catch (e) { toast(e.message); }
 }
 let tApprOn = true;
@@ -994,8 +1203,35 @@ $('msgSend').onclick = async () => {
 
 /* ---- sozlamalar ---- */
 let geoOn = true;
+let schedDays = new Set();
+function renderSched(s) {
+  const sc = s.schedule; $('setMode').value = s.mode;
+  $('schedBox').classList.toggle('hidden', s.mode !== 'work');
+  $('scStart').value = sc.start; $('scEnd').value = sc.end; $('scL1').value = sc.lunch_start; $('scL2').value = sc.lunch_end;
+  $('scGrace').value = sc.grace; $('graceTxt').textContent = sc.grace + ' daq';
+  schedDays = new Set(sc.workdays);
+  $('scDays').innerHTML = [1,2,3,4,5,6,7].map(i => `<button class="chip ${schedDays.has(i)?'on':''}" data-wd="${i}">${WD_SHORT[i]}</button>`).join('');
+  $('scDays').querySelectorAll('[data-wd]').forEach(b => b.onclick = () => { haptic(); const i = +b.dataset.wd; schedDays.has(i) ? schedDays.delete(i) : schedDays.add(i); b.classList.toggle('on'); });
+}
+$('setMode').onchange = () => $('schedBox').classList.toggle('hidden', $('setMode').value !== 'work');
+$('scGrace').oninput = () => $('graceTxt').textContent = $('scGrace').value + ' daq';
+$('saveSched').onclick = async () => {
+  const mode = $('setMode').value, changed = mode !== SET.mode;
+  if (changed && !await confirmBox('Rejim almashtirilsinmi?', mode === 'work'
+      ? "Bot hodimlarning ishga kelish-ketishi uchun ishlaydi. Dars yozuvlari o'chmaydi, faqat ko'rinmay turadi."
+      : "Bot o'qituvchilarning darsga kirish-chiqishi uchun ishlaydi. Ish yozuvlari o'chmaydi, faqat ko'rinmay turadi.", 'Almashtirish', '')) return;
+  const body = {mode};
+  if (mode === 'work') body.schedule = {start: $('scStart').value, end: $('scEnd').value, lunch_start: $('scL1').value, lunch_end: $('scL2').value,
+                                        grace: +$('scGrace').value, workdays: [...schedDays]};
+  const r = await act('/api/admin/settings', body, 'Saqlandi ✅');
+  if (!r) return;
+  if (changed) { toast('Rejim almashtirildi — ilova yangilanmoqda…'); setTimeout(() => location.reload(), 900); return; }
+  renderSettings(r); ME.schedule = r.schedule;
+};
+
 function renderSettings(s) {
   SET = s;
+  if (s.schedule) renderSched(s);
   $('setLat').value = s.lat ?? ''; $('setLon').value = s.lon ?? '';
   $('setRad').value = s.radius; $('radTxt').textContent = s.radius + ' m';
   geoOn = s.required; $('setGeo').classList.toggle('on', geoOn);
@@ -1008,7 +1244,7 @@ function renderSettings(s) {
     $('locState').innerHTML = `<span class="li">✅</span><div>Lokatsiya kiritilgan<small>${s.lat}, ${s.lon} · radius ${s.radius} m${s.required?'':' · tekshiruv O\'CHIQ'}</small></div>`;
   } else {
     $('map').classList.add('hidden');
-    $('locState').innerHTML = `<span class="li">⚠️</span><div>Lokatsiya kiritilmagan<small>O'qituvchilar istalgan joydan belgilay oladi</small></div>`;
+    $('locState').innerHTML = `<span class="li">⚠️</span><div>Lokatsiya kiritilmagan<small>${isWork() ? 'Hodimlar' : "O'qituvchilar"} istalgan joydan belgilay oladi</small></div>`;
   }
   $('qrPrint').innerHTML = ''; new QRCode($('qrPrint'), {text: s.qr, width: 400, height: 400, colorDark: '#2a2850', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M});
 }
@@ -1050,9 +1286,9 @@ $('qrSend').onclick = async () => {
   x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H);
   x.fillStyle = '#2a2850'; x.fillRect(0, 0, W, 190);
   x.fillStyle = '#ffffff'; x.textAlign = 'center'; x.font = 'bold 54px Nunito, Arial'; x.fillText(SET.org_name, W/2, 95);
-  x.font = '600 34px Nunito, Arial'; x.fillStyle = '#cfc9ff'; x.fillText("O'qituvchilar davomati", W/2, 150);
+  x.font = '600 34px Nunito, Arial'; x.fillStyle = '#cfc9ff'; x.fillText(isWork() ? 'Hodimlar davomati' : "O'qituvchilar davomati", W/2, 150);
   x.drawImage(src, 120, 250, 760, 760);
-  x.fillStyle = '#2a2850'; x.font = 'bold 40px Nunito, Arial'; x.fillText('Darsga kirishda va chiqishda', W/2, 1095);
+  x.fillStyle = '#2a2850'; x.font = 'bold 40px Nunito, Arial'; x.fillText(isWork() ? 'Ishga kelganda va ketganda' : 'Darsga kirishda va chiqishda', W/2, 1095);
   x.fillText('skanerlang 📲', W/2, 1150);
   x.fillStyle = '#8c89ad'; x.font = '600 28px Nunito, Arial'; x.fillText('@' + (SET.qr.split('t.me/')[1] || '').split('?')[0], W/2, 1225);
   $('qrSend').disabled = true; await act('/api/admin/qr/send', {image: c.toDataURL('image/png')}); $('qrSend').disabled = false;
@@ -1082,14 +1318,14 @@ async function kioskRefresh() {
     if (s.qr !== kQrText) { kQrText = s.qr; $('kQr').innerHTML = ''; kQr = new QRCode($('kQr'), {text: s.qr, width: 640, height: 640, colorDark: '#1e1c40', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M}); }
     $('kNow').textContent = s.now_in.length; $('kToday').textContent = s.today.lessons;
     $('kNowTxt').textContent = s.now_in.length ? s.now_in.length + ' kishi' : '';
-    $('kNowList').innerHTML = s.now_in.length ? s.now_in.map(l => `<div class="k-row">${av(l.full_name)}<div style="min-width:0"><b>${esc(l.full_name)}</b><small>${esc(lesTitle(l))} · ${l.start.time} dan</small></div><time>${l.duration_text}</time></div>`).join('')
-      : `<div style="color:#a5a2d6;font-size:18px;padding:10px 4px">Hozir hech kim darsda emas</div>`;
-    $('kEvents').innerHTML = s.events.length ? s.events.map(e => `<div class="k-row"><span class="${e.type==='in'?'k-ev-in':'k-ev-out'}" style="font-size:22px">${e.type==='in'?'⬤':'◯'}</span><div style="min-width:0"><b>${esc(e.full_name)}</b><small>${e.type==='in' ? 'darsga kirdi' : 'darsdan chiqdi'}${e.title ? ' · ' + esc(e.title) : ''}</small></div><time class="${e.type==='in'?'k-ev-in':'k-ev-out'}">${e.time}</time></div>`).join('')
+    $('kNowList').innerHTML = s.now_in.length ? s.now_in.map(l => `<div class="k-row">${av(l.full_name)}<div style="min-width:0"><b>${esc(l.full_name)}</b><small>${s.mode === 'work' ? '' : esc(lesTitle(l)) + ' · '}${l.start.time} dan</small></div><time>${l.duration_text}</time></div>`).join('')
+      : `<div style="color:#a5a2d6;font-size:18px;padding:10px 4px">Hozir hech kim ${s.mode === 'work' ? 'ishda' : 'darsda'} emas</div>`;
+    $('kEvents').innerHTML = s.events.length ? s.events.map(e => `<div class="k-row"><span class="${e.type==='in'?'k-ev-in':'k-ev-out'}" style="font-size:22px">${e.type==='in'?'⬤':'◯'}</span><div style="min-width:0"><b>${esc(e.full_name)}</b><small>${s.mode === 'work' ? (e.type==='in' ? 'ishga keldi' : 'ishdan ketdi') : (e.type==='in' ? 'darsga kirdi' : 'darsdan chiqdi')}${e.title ? ' · ' + esc(e.title) : ''}</small></div><time class="${e.type==='in'?'k-ev-in':'k-ev-out'}">${e.time}</time></div>`).join('')
       : `<div style="color:#a5a2d6;font-size:18px;padding:10px 4px">Bugun hali harakat yo'q</div>`;
     // yangi harakat bo'lsa — ekranda katta xabar
     const top = s.events[0], key = top ? top.type + top.ts + top.full_name : null;
     if (kLastEvent && key && key !== kLastEvent) {
-      $('kFlashTxt').innerHTML = `${top.type==='in' ? '✅' : '👋'} ${esc(top.full_name)}<small>${top.type==='in' ? 'darsga kirdi' : 'darsdan chiqdi'} · ${top.time}</small>`;
+      $('kFlashTxt').innerHTML = `${top.type==='in' ? '✅' : '👋'} ${esc(top.full_name)}<small>${s.mode === 'work' ? (top.type==='in' ? 'ishga keldi' : 'ishdan ketdi') : (top.type==='in' ? 'darsga kirdi' : 'darsdan chiqdi')} · ${top.time}</small>`;
       $('kFlash').classList.add('show'); setTimeout(() => $('kFlash').classList.remove('show'), 3500);
     }
     kLastEvent = key;
@@ -1160,11 +1396,12 @@ async function boot() {
   catch (e) { $('loading').textContent = e.message; return; }
   if (ME.need_code) {
     $('loading').classList.add('hidden'); $('join').classList.remove('hidden');
-    $('joinTxt').textContent = `Bu ilova faqat ${ME.org || 'texnikum'} o'qituvchilari uchun. Admin bergan kirish kodini kiriting.`;
+    $('joinTxt').textContent = `Bu ilova faqat ${ME.org || 'texnikum'} xodimlari uchun. Admin bergan kirish kodini kiriting.`;
     setTimeout(() => $('joinCode').focus(), 200);
     return;
   }
   $('loading').classList.add('hidden'); $('nav').classList.remove('hidden');
+  applyMode();
   if (!ME.user.is_admin) $('navAdmin').classList.add('hidden'); else $('toAdmin').classList.remove('hidden');
   renderHome();
   show(ME.user.is_admin && !URL_CODE ? 'admin' : 'home');
@@ -1189,6 +1426,38 @@ async function demoView(v) {
 }
 boot();
 
+/* ---------------- demo: hodimlar rejimi ---------------- */
+function demoWork(path, body, names, d, nowS) {
+  const sc = {start:'08:00', grace:10, lunch_start:'12:30', lunch_end:'14:00', end:'15:00', workdays:[1,2,3,4,5,6]};
+  const D = (uid, name, n, inn, out, late, early, worked, open=false) => ({user_id:uid, full_name:name, date:d(n), in:inn, out, open, forgot:false,
+    worked, worked_text: durTxt(worked), late_min:late, early_min:early, manual:false, ids:[uid*100+n], last_id:uid*100+n, dist:28});
+  const today = [D(2,names[0],0,'07:52',null,0,0,9900,true), D(3,names[1],0,'08:24',null,24,0,8400,true), D(4,names[2],0,'08:06','11:40',0,200,12800),
+                 D(5,names[3],0,'08:41',null,41,0,7600,true), D(6,names[4],0,'07:58',null,0,0,10100,true)];
+  const hist = [1,2,3,4,5,6].map(n => D(1,'Karimova Aziza',n,n===2?'08:17':'07:5'+n,'15:0'+n, n===2?17:0, 0, 19800+n*60));
+  if (path === '/api/me') return {mode:'work', schedule:sc, workday_today:true, user:{id:1,full_name:'Karimova Aziza Rustamovna',is_admin:true,is_owner:true,registered:true},
+    org:'Arnasoy texnikumi', geo:{configured:true,required:true,radius:200}, open:{start:{ts:nowS-9000,time:'07:55'}}, last:null, today:[], history:[], days:[], groups:[],
+    month:{lessons:14,hours_text:'78 soat'}, server_time:nowS, today_work:D(1,'Karimova Aziza',0,'07:55',null,0,0,9000,true), work_history:hist,
+    work_month:{days:14,late:1,late_min:17,early:0,absent:0,seconds:281000,hours_text:'78 soat 3 daq',forgot:0}};
+  if (path === '/api/admin/stats') return {mode:'work', schedule:sc, workday_today:true, work_started:true, teachers:38, staff:36, unregistered:1, pending:1, geo:{configured:true},
+    today:{present:31,late:4,now_in:27,left:4,hours:96.5}, late_today:[today[3], today[1], D(7,'Nazarova Dilnoza',0,'08:19',null,19,0,7000,true), D(8,'Qodirov Jasur',0,'08:12',null,12,0,7300,true)],
+    now_in:today.filter(x=>x.open), absent_today:[{id:9,full_name:names[5]},{id:10,full_name:'Sobirov Ulug\'bek'}],
+    days:[33,35,0,34,36,32,31].map((x,i)=>({date:d(6-i),present:x,late:[3,2,0,5,1,2,4][i],workday:x>0})),
+    ranking:[{id:5,full_name:names[3],late:6,late_min:142,days:13,absent:1},{id:3,full_name:names[1],late:4,late_min:77,days:14,absent:0},{id:8,full_name:'Qodirov Jasur',late:3,late_min:38,days:14,absent:0}],
+    admins:[{id:1,full_name:'Karimova Aziza Rustamovna',username:'aziza',is_owner:true}], month_forgot:0};
+  if (path.startsWith('/api/admin/lessons?')) return {mode:'work', days:today.concat([D(7,'Nazarova Dilnoza',0,'08:19',null,19,0,7000,true)])};
+  if (path.startsWith('/api/admin/teachers?') || path === '/api/admin/teachers') return {teachers: names.map((n,i)=>({id:i+2,full_name:n,username:'user'+i,is_admin:false,approved:true,is_owner:false,registered:true,in_lesson:i<4,
+    month:{days:14-i%3,late:[0,4,0,6,1,0][i],late_min:0,absent:i===5?2:0,hours_text:`${78-i*3} soat`,lessons:14}}))};
+  if (/^\/api\/admin\/teachers\/\d+$/.test(path) && !body) return {id:5,full_name:names[3],username:'nilufar',is_admin:false,is_owner:false,approved:true,registered:true,
+    month:{lessons:13,hours_text:'71 soat',forgot:0}, history:[], work_month:{days:13,late:6,late_min:142,absent:1,hours_text:'71 soat 20 daq'},
+    work_history:[1,2,3,4,5].map(n => D(5,names[3],n,['08:41','08:22','07:58','08:35','08:03'][n-1],'15:0'+n,[41,22,0,35,0][n-1],0,19000))};
+  if (path === '/api/admin/settings' || path.startsWith('/api/admin/settings')) return {lat:40.1268,lon:67.8422,radius:200,required:true,configured:true,org_name:'Arnasoy texnikumi',max_hours:4,
+    qr:'https://t.me/Arnasoy_Texnikum_Davomatbot?start=t_1_abcdef',qr_version:1, mode:'work', schedule:sc};
+  if (path === '/api/admin/screen') return {mode:'work', schedule:sc, org:'Arnasoy texnikumi', qr:'https://t.me/Arnasoy_Texnikum_Davomatbot?start=t_1_abcdef', geo:true,
+    now_in: today.filter(x=>x.open).map(x=>({full_name:x.full_name, start:{time:x.in}, duration_text:x.worked_text})), today:{lessons:31,teachers:31},
+    events: today.map((x,i)=>({type:'in', ts:nowS-i*300, time:x.in, full_name:x.full_name, title:x.late_min?x.late_min+' daq kechikdi':''}))};
+  return null;
+}
+
 /* ---------------- demo (brauzerda ?demo) ---------------- */
 function demoApi(path, body) {
   const nowS = Date.now()/1000|0, d = n => ymd(new Date(Date.now() - n*864e5));
@@ -1196,6 +1465,7 @@ function demoApi(path, body) {
   const L = (id, n, a, b, st, g, s, extra={}) => ({id, start: T(n,a), end: b!=null ? T(n,b) : null, status: st, group: g, subject: s, duration: a-(b??0), duration_text: durTxt(a-(b??0)), start_dist: 34, end_dist: 41, manual:false, ...extra});
   const G = [{id:1,name:'101-guruh',lessons:12},{id:2,name:'102-guruh',lessons:9},{id:3,name:'201-guruh',lessons:15}];
   const names = ['Aliyev Vali Karimovich','Karimova Aziza','Rahimov Bobur','Toshmatova Nilufar','Yusupov Sardor','Ergasheva Malika'];
+  if (QS.has('work')) { const w = demoWork(path, body, names, d, nowS); if (w) return w; }
   if (path === '/api/me' && QS.has('lock')) return {need_code:true, org:'Arnasoy texnikumi', user:{id:5,full_name:'Yangi odam'}};
   if (path === '/api/me') return {user:{id:1,full_name:'Karimova Aziza Rustamovna',is_admin:true,is_owner:true,registered:true}, org:'Arnasoy texnikumi', geo:{configured:true,required:true,radius:200},
     open: L(5,0,1520,null,'open','101-guruh','Matematika'), last:{group_id:1,subject:'Matematika'}, server_time: nowS, groups: G,

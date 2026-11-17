@@ -164,15 +164,40 @@ DEFAULTS = {
     "geo_required": "1",           # lokatsiya tekshiruvi yoqilgan
     "max_hours": "4",              # chiqish belgilanmasa, necha soatdan keyin dars yopiladi
     "qr_version": "1",             # QR ni yangilash (eskisini bekor qilish) uchun
+    # ish rejimi: work — hodimlar ishga kelib-ketishi, lesson — darsga kirib-chiqish
+    "mode": "work",
+    "work_start": "08:00", "grace": "10", "lunch_start": "12:30", "lunch_end": "14:00", "work_end": "15:00",
+    "workdays": "1,2,3,4,5,6",     # 1=dushanba ... 7=yakshanba
 }
 
 
+import re as _re
+_LESSONS_RE = _re.compile(r"FROM lessons\b(\s+l\b)?")
+_MODE_CACHE = {"v": None, "t": 0.0}
+
+
+def KIND() -> str:
+    """Joriy rejim yozuvlari turi: 'work' yoki 'lesson'."""
+    if time.time() - _MODE_CACHE["t"] > 5:
+        r = _exec("SELECT value FROM settings WHERE key='mode'", ()).fetchone()
+        _MODE_CACHE["v"] = (r["value"] if r else "work")
+        _MODE_CACHE["t"] = time.time()
+    return "work" if _MODE_CACHE["v"] == "work" else "lesson"
+
+
+def _scope(sql: str) -> str:
+    if "FROM lessons" not in sql:
+        return sql
+    k = KIND()
+    return _LESSONS_RE.sub(lambda m: f"FROM (SELECT * FROM lessons WHERE kind='{k}') " + ("l" if m.group(1) else "lessons"), sql)
+
+
 def q(sql, *args):
-    return _exec(sql, args).fetchall()
+    return _exec(_scope(sql), args).fetchall()
 
 
 def q1(sql, *args):
-    return _exec(sql, args).fetchone()
+    return _exec(_scope(sql), args).fetchone()
 
 
 def run(sql, *args):
@@ -186,6 +211,10 @@ def insert(sql, *args) -> int:
     return _exec(sql, args).lastrowid
 
 
+def set_mode_cache_dirty():
+    _MODE_CACHE["t"] = 0.0
+
+
 def setting(key: str) -> str:
     r = q1("SELECT value FROM settings WHERE key=?", key)
     return r["value"] if r else DEFAULTS[key]
@@ -197,8 +226,8 @@ def set_setting(key: str, value) -> None:
 
 def has_column(table: str, col: str) -> bool:
     if PG:
-        return q1("SELECT 1 FROM information_schema.columns WHERE table_name=? AND column_name=?", table, col) is not None
-    return any(r["name"] == col for r in q(f"PRAGMA table_info({table})"))
+        return _exec("SELECT 1 FROM information_schema.columns WHERE table_name=%s AND column_name=%s", (table, col)).fetchone() is not None
+    return any(r["name"] == col for r in _exec(f"PRAGMA table_info({table})", ()).fetchall())
 
 
 def migrate():
@@ -208,6 +237,9 @@ def migrate():
         run("UPDATE users SET approved=1")
     if not has_column("users", "is_owner"):
         run("ALTER TABLE users ADD COLUMN is_owner INTEGER DEFAULT 0")
+    if not has_column("lessons", "kind"):
+        run("ALTER TABLE lessons ADD COLUMN kind TEXT DEFAULT 'lesson'")
+        run("UPDATE lessons SET kind='lesson'")
     if not has_column("users", "joined_via"):
         run("ALTER TABLE users ADD COLUMN joined_via TEXT")
     if not q1("SELECT 1 FROM users WHERE is_owner=1"):
@@ -412,6 +444,111 @@ def check_location(b: dict) -> tuple[bool, str, int | None, float | None, float 
     return True, "", round(dist), lat, lon
 
 
+# ---------------------------------------------------------------- ish jadvali (hodimlar)
+def sched() -> dict:
+    return {"start": setting("work_start"), "grace": int(setting("grace")), "lunch_start": setting("lunch_start"),
+            "lunch_end": setting("lunch_end"), "end": setting("work_end"),
+            "workdays": [int(x) for x in setting("workdays").split(",") if x.strip()]}
+
+
+def at(day0: int, hhmm: str) -> int:
+    h, m = map(int, hhmm.split(":"))
+    return day0 + h * 3600 + m * 60
+
+
+def is_workday(day0: int) -> bool:
+    return datetime.fromtimestamp(day0 + 43200, TZ).isoweekday() in sched()["workdays"]
+
+
+def worked_seconds(a: int, b: int, day0: int, sc: dict) -> int:
+    """[a, b] oralig'idagi ish vaqti (tushlik ayirilgan)."""
+    if b <= a:
+        return 0
+    l1, l2 = at(day0, sc["lunch_start"]), at(day0, sc["lunch_end"])
+    overlap = max(0, min(b, l2) - max(a, l1))
+    return (b - a) - overlap
+
+
+def work_days(rows, names: dict | None = None) -> list[dict]:
+    """Yozuvlarni hodim+kun bo'yicha jamlaydi: keldi, ketdi, kechikish, erta ketish, ishlangan vaqt."""
+    sc = sched()
+    groups: dict = {}
+    for r in sorted(rows, key=lambda r: r["start_ts"]):
+        d0 = day_start(datetime.fromtimestamp(r["start_ts"], TZ))
+        groups.setdefault((r["user_id"], d0), []).append(r)
+    out = []
+    t = now()
+    for (uid, d0), rs in groups.items():
+        first = rs[0]["start_ts"]
+        is_open = any(r["status"] == "open" for r in rs)
+        forgot = any(r["status"] == "forgot" for r in rs)
+        ends = [r["end_ts"] for r in rs if r["end_ts"]]
+        last_out = max(ends) if ends and not is_open else None
+        secs = 0
+        for r in rs:
+            if r["status"] == "done" and r["end_ts"]:
+                secs += worked_seconds(r["start_ts"], r["end_ts"], d0, sc)
+            elif r["status"] == "open":
+                secs += worked_seconds(r["start_ts"], t, d0, sc)
+        start_ts, end_ts = at(d0, sc["start"]), at(d0, sc["end"])
+        late = (first - start_ts) // 60 if first > start_ts + sc["grace"] * 60 else 0
+        early = (end_ts - last_out) // 60 if last_out and last_out < end_ts - 60 else 0
+        out.append({
+            "user_id": uid, "full_name": (names or {}).get(uid), "date": fmt_dt(d0, "%Y-%m-%d"), "day0": d0,
+            "in": fmt_dt(first, "%H:%M"), "in_ts": first, "out": fmt_dt(last_out, "%H:%M") if last_out else None,
+            "open": is_open, "forgot": forgot and not is_open and not last_out,
+            "worked": secs, "worked_text": dur_text(secs), "late_min": int(late), "early_min": int(early),
+            "manual": any(r["manual"] for r in rs), "ids": [r["id"] for r in rs], "last_id": rs[-1]["id"],
+            "dist": rs[0]["start_dist"],
+        })
+    out.sort(key=lambda x: (-x["day0"], x["in_ts"]))
+    return out
+
+
+def workdays_between(d_from0: int, d_to0: int) -> list[int]:
+    days, d = [], d_from0
+    while d <= d_to0:
+        if is_workday(d):
+            days.append(d)
+        d += 86400
+    return days
+
+
+def work_month(uid: int | None = None) -> dict:
+    """Oylik hisob: kelgan kunlar, kechikishlar, ishlangan soat, kelmagan kunlar."""
+    m0 = day_start(datetime.now(TZ).replace(day=1))
+    sql, args = "SELECT * FROM lessons WHERE start_ts>=?", [m0]
+    if uid:
+        sql += " AND user_id=?"
+        args.append(uid)
+    by: dict = {}
+    for d in work_days(q(sql, *args)):
+        by.setdefault(d["user_id"], []).append(d)
+    users = {r["id"]: r for r in q("SELECT id, created_at FROM users")}
+    yday = day_start() - 86400
+    res = {}
+    for u_id in ([uid] if uid else list(by.keys())):
+        ds = by.get(u_id, [])
+        present = {d["day0"] for d in ds}
+        joined = day_start(datetime.fromtimestamp((users.get(u_id) or {"created_at": m0})["created_at"], TZ))
+        wdays = workdays_between(max(m0, joined), yday) if yday >= max(m0, joined) else []
+        secs = sum(d["worked"] for d in ds)
+        res[u_id] = {"days": len(ds), "late": sum(1 for d in ds if d["late_min"]), "late_min": sum(d["late_min"] for d in ds),
+                     "early": sum(1 for d in ds if d["early_min"]), "absent": len([d for d in wdays if d not in present]),
+                     "seconds": secs, "hours_text": dur_text(secs), "forgot": sum(1 for d in ds if d["forgot"]),
+                     # dars rejimi bilan moslik uchun
+                     "lessons": len(ds)}
+    return res
+
+
+EMPTY_WORK = {"days": 0, "late": 0, "late_min": 0, "early": 0, "absent": 0, "seconds": 0, "hours_text": "",
+              "forgot": 0, "lessons": 0}
+
+
+def late_text(m: int) -> str:
+    return f"{m // 60} soat {m % 60} daq" if m >= 60 else f"{m} daq"
+
+
 # ---------------------------------------------------------------- darslar
 def lesson_dict(r) -> dict:
     end = r["end_ts"]
@@ -429,18 +566,23 @@ def open_lesson(uid: int):
     return q1("SELECT * FROM lessons WHERE user_id=? AND status='open' ORDER BY start_ts DESC LIMIT 1", uid)
 
 
+def is_work() -> bool:
+    return KIND() == "work"
+
+
 async def close_stale():
     """Chiqish belgilanmay qolgan darslarni «unutilgan» deb yopadi va o'qituvchiga xabar beradi."""
-    limit = now() - int(float(setting("max_hours")) * 3600)
+    work = is_work()
+    limit = day_start() if work else now() - int(float(setting("max_hours")) * 3600)
     rows = q("SELECT * FROM lessons WHERE status='open' AND start_ts<?", limit)
     for r in rows:
         run("UPDATE lessons SET status='forgot' WHERE id=?", r["id"])
+        msg = (f"⚠️ {fmt_dt(r['start_ts'], '%d.%m.%Y')} kuni ishdan ketishni belgilamadingiz.\n"
+               f"Kun «ketish belgilanmagan» deb yopildi. Kerak bo'lsa, ma'muriyatga murojaat qiling.") if work else (
+               f"⚠️ {fmt_dt(r['start_ts'])} da boshlangan darsingiz uchun chiqish belgilanmadi.\n"
+               f"Dars «chiqish belgilanmagan» deb yopildi. Kerak bo'lsa, ma'muriyatga murojaat qiling.")
         try:
-            await bot.send_message(
-                r["user_id"],
-                f"⚠️ {fmt_dt(r['start_ts'])} da boshlangan darsingiz uchun chiqish belgilanmadi.\n"
-                f"Dars «chiqish belgilanmagan» deb yopildi. Kerak bo'lsa, ma'muriyatga murojaat qiling.",
-            )
+            await bot.send_message(r["user_id"], msg)
         except Exception:
             pass
 
@@ -521,12 +663,19 @@ async def cmd_start(m: Message, command: CommandObject):
         if not check_code(payload):
             return await m.answer("⚠️ Bu QR kod eskirgan. Texnikumdagi yangi QR kodni skanerlang.")
         lesson = open_lesson(m.from_user.id)
-        what = "darsdan chiqishni" if lesson else "darsga kirishni"
+        if is_work():
+            what = "ishdan ketishni" if lesson else "ishga kelishni"
+        else:
+            what = "darsdan chiqishni" if lesson else "darsga kirishni"
         return await m.answer(f"📍 {what.capitalize()} tasdiqlash uchun ilovani oching — joylashuvingiz tekshiriladi 👇",
                               reply_markup=app_keyboard(payload, "📍 Tasdiqlash"))
-    role = ("👑 Siz adminsiz: ilovadagi admin panelda jurnal, statistika va sozlamalar bor. "
-            "Avval «Sozlamalar»da texnikum lokatsiyasini kiriting.") if user["is_admin"] else (
+    sc = sched()
+    how = (f"Ishga kelganda va ishdan ketganda texnikumdagi QR kodni ilova orqali skanerlang.\n"
+           f"🕗 Ish vaqti: {sc['start']}–{sc['end']} (tushlik {sc['lunch_start']}–{sc['lunch_end']}), "
+           f"{sc['grace']} daqiqagacha kechikishga ruxsat.") if is_work() else (
         "Darsga kirganda va darsdan chiqqanda texnikumdagi QR kodni ilova orqali skanerlang.")
+    role = ("👑 Siz adminsiz: ilovadagi admin panelda jurnal, statistika va sozlamalar bor. "
+            "Avval «Sozlamalar»da texnikum lokatsiyasini kiriting.\n\n" + how) if user["is_admin"] else how
     await m.answer(f"Assalomu alaykum, {user['full_name']}!\n\n{role}", reply_markup=app_keyboard())
 
 
@@ -567,7 +716,58 @@ async def broadcast(user_ids: list[int], text: str) -> tuple[int, int]:
 STATUS_TXT = {"open": "Davom etmoqda", "done": "Yakunlangan", "forgot": "Chiqish belgilanmagan"}
 
 
+async def send_work_report(admin_id: int, d_from: str, d_to: str, user_id: int | None):
+    start, end = parse_day(d_from), parse_day(d_to) + 86400
+    sql, args = "SELECT * FROM lessons WHERE start_ts>=? AND start_ts<?", [start, end]
+    if user_id:
+        sql += " AND user_id=?"
+        args.append(user_id)
+    rows = q(sql, *args)
+    users = q("SELECT * FROM users WHERE approved=1" + (" AND id=?" if user_id else " AND is_admin=0"),
+              *([user_id] if user_id else []))
+    names = {u["id"]: u["full_name"] for u in q("SELECT id, full_name FROM users")}
+    days = sorted(work_days(rows, names), key=lambda d: (d["day0"], d["full_name"] or ""))
+    if not days and not users:
+        return 0
+    sc = sched()
+    det = [["№", "Sana", "Hodim", "Keldi", "Ketdi", "Kechikish (daq)", "Erta ketish (daq)", "Ishlagan (soat)", "Holat"]]
+    for i, d in enumerate(days, 1):
+        state = "Ishda" if d["open"] else ("Ketish belgilanmagan" if d["forgot"] else "Yakunlangan")
+        if d["manual"]:
+            state += " (tahrirlangan)"
+        det.append([i, fmt_dt(d["day0"], "%d.%m.%Y"), d["full_name"], d["in"], d["out"] or "", d["late_min"] or "",
+                    d["early_min"] or "", round(d["worked"] / 3600, 2), state])
+    last_day = min(parse_day(d_to), day_start())
+    wd = workdays_between(parse_day(d_from), last_day)
+    by: dict = {}
+    for d in days:
+        by.setdefault(d["user_id"], []).append(d)
+    sm = [["№", "Hodim", "Ish kunlari", "Kelgan", "Kelmagan", "Kechikishlar", "Jami kechikish (daq)",
+           "Erta ketishlar", "Ketish belgilanmagan", "Jami ish vaqti (soat)"]]
+    people = {u["id"]: u for u in users}
+    for uid in by:
+        people.setdefault(uid, {"id": uid, "full_name": names.get(uid), "created_at": 0})
+    for i, u in enumerate(sorted(people.values(), key=lambda x: x["full_name"] or ""), 1):
+        ds = by.get(u["id"], [])
+        joined = day_start(datetime.fromtimestamp(u["created_at"] or 0, TZ))
+        mine = [x for x in wd if x >= joined]
+        present = {d["day0"] for d in ds}
+        sm.append([i, u["full_name"], len(mine), len(ds), len([x for x in mine if x not in present]),
+                   sum(1 for d in ds if d["late_min"]), sum(d["late_min"] for d in ds),
+                   sum(1 for d in ds if d["early_min"]), sum(1 for d in ds if d["forgot"]),
+                   round(sum(d["worked"] for d in ds) / 3600, 1)])
+    title = f"{d_from}_{d_to}"
+    await bot.send_document(admin_id, csv_file(sm, f"hodimlar_umumiy_{title}.csv"),
+                            caption=(f"📊 Hodimlar davomati: {d_from} — {d_to}\n"
+                                     f"🕗 Ish vaqti {sc['start']}–{sc['end']}, {sc['grace']} daq ruxsat, tushlik {sc['lunch_start']}–{sc['lunch_end']}\n"
+                                     f"👥 Hodimlar: {len(people)}   📅 Ish kunlari: {len(wd)}"))
+    await bot.send_document(admin_id, csv_file(det, f"hodimlar_kunlik_{title}.csv"), caption="📋 Kunlik (batafsil)")
+    return max(len(days), 1)
+
+
 async def send_report(admin_id: int, d_from: str, d_to: str, user_id: int | None):
+    if is_work():
+        return await send_work_report(admin_id, d_from, d_to, user_id)
     start, end = parse_day(d_from), parse_day(d_to) + 86400
     sql = "SELECT l.*, u.full_name FROM lessons l JOIN users u ON u.id=l.user_id WHERE l.start_ts>=? AND l.start_ts<?"
     args = [start, end]
@@ -666,7 +866,15 @@ async def api_me(request):
     ol = open_lesson(u["id"])
     last = q1("SELECT group_id, subject FROM lessons WHERE user_id=? ORDER BY start_ts DESC LIMIT 1", u["id"])
     g = geo_conf()
+    work = {}
+    if is_work():
+        wd = work_days(q("SELECT * FROM lessons WHERE user_id=? AND start_ts>=?", u["id"], t0 - 40 * 86400))
+        work = {"today_work": next((d for d in wd if d["day0"] == t0), None),
+                "work_history": [d for d in wd if d["day0"] != t0][:30],
+                "work_month": work_month(u["id"]).get(u["id"], EMPTY_WORK),
+                "workday_today": is_workday(t0)}
     return web.json_response({
+        "mode": KIND(), "schedule": sched(), **work,
         "user": {"id": u["id"], "full_name": u["full_name"], "username": u["username"],
                  "is_admin": bool(u["is_admin"]), "is_owner": bool(u["is_owner"]),
                  "registered": bool(u["registered"])},
@@ -707,21 +915,46 @@ async def api_scan(request):
     action = b.get("action")
     if action == "start":
         if ol:
-            return jerr("Sizda tugallanmagan dars bor. Avval darsdan chiqishni belgilang")
-        gid = opt_int(b.get("group_id"))
-        lid = insert("""INSERT INTO lessons(user_id, group_id, subject, start_ts, start_dist, start_lat, start_lon)
-                        VALUES(?,?,?,?,?,?,?)""", u["id"], gid, clean(b.get("subject"), 60), now(), dist, lat, lon)
+            return jerr("Siz allaqachon ishdasiz. Ketishda yana skanerlang" if is_work()
+                        else "Sizda tugallanmagan dars bor. Avval darsdan chiqishni belgilang")
+        work = is_work()
+        gid = None if work else opt_int(b.get("group_id"))
+        lid = insert("""INSERT INTO lessons(user_id, group_id, subject, start_ts, start_dist, start_lat, start_lon, kind)
+                        VALUES(?,?,?,?,?,?,?,?)""", u["id"], gid, "" if work else clean(b.get("subject"), 60), now(), dist, lat, lon,
+                     "work" if work else "lesson")
         les = q1("SELECT * FROM lessons WHERE id=?", lid)
+        if work:
+            t0 = day_start()
+            d = next((x for x in work_days(q("SELECT * FROM lessons WHERE user_id=? AND start_ts>=?", u["id"], t0)) if x["day0"] == t0), None)
+            first_today = d and d["ids"][0] == lid
+            tm = fmt_dt(les["start_ts"], "%H:%M")
+            if not first_today:
+                msg = f"Qaytib keldingiz: {tm}"
+            elif d["late_min"]:
+                msg = f"Ishga keldingiz: {tm}. ⏰ {late_text(d['late_min'])} kechikdingiz"
+            else:
+                msg = f"Ishga keldingiz: {tm}. ✅ O'z vaqtida"
+            return web.json_response({"ok": True, "message": msg, "late_min": d["late_min"] if d and first_today else 0,
+                                      "lesson": lesson_dict(les)})
         return web.json_response({"ok": True, "message": f"Darsga kirish qayd etildi: {fmt_dt(les['start_ts'], '%H:%M')}",
                                   "lesson": lesson_dict(les)})
     if action == "end":
         if not ol:
-            return jerr("Ochiq dars yo'q. Avval darsga kirishni belgilang")
+            return jerr("Avval ishga kelishni belgilang" if is_work() else "Ochiq dars yo'q. Avval darsga kirishni belgilang")
         if now() - ol["start_ts"] < 60:
-            return jerr("Dars endigina boshlandi. Chiqishni birozdan keyin belgilang")
+            return jerr("Hozirgina keldingiz. Ketishni birozdan keyin belgilang" if is_work()
+                        else "Dars endigina boshlandi. Chiqishni birozdan keyin belgilang")
         run("UPDATE lessons SET end_ts=?, end_dist=?, end_lat=?, end_lon=?, status='done' WHERE id=?",
             now(), dist, lat, lon, ol["id"])
         les = q1("SELECT * FROM lessons WHERE id=?", ol["id"])
+        if is_work():
+            t0 = day_start(datetime.fromtimestamp(les["start_ts"], TZ))
+            wd = next((x for x in work_days(q("SELECT * FROM lessons WHERE user_id=? AND start_ts>=? AND start_ts<?",
+                                                u["id"], t0, t0 + 86400)) if x["day0"] == t0), None)
+            msg = f"Ishdan ketdingiz: {fmt_dt(les['end_ts'], '%H:%M')}. Bugun ishlagan vaqt: {wd['worked_text'] if wd else ''}"
+            if wd and wd["early_min"]:
+                msg += f"\n⚠️ Ish vaqti tugashiga {late_text(wd['early_min'])} qolgan edi"
+            return web.json_response({"ok": True, "message": msg, "lesson": lesson_dict(les)})
         d = lesson_dict(les)
         return web.json_response({"ok": True, "message": f"Darsdan chiqish qayd etildi. Davomiyligi: {d['duration_text']}",
                                   "lesson": d})
@@ -729,7 +962,51 @@ async def api_scan(request):
 
 
 # ---------- admin: statistika
+async def api_work_stats(request):
+    t0 = day_start()
+    users = q("SELECT * FROM users WHERE approved=1 ORDER BY full_name")
+    names = {u["id"]: u["full_name"] for u in users}
+    staff = [u for u in users if not u["is_admin"]]
+    week = work_days(q("SELECT * FROM lessons WHERE start_ts>=?", t0 - 6 * 86400), names)
+    today = [d for d in week if d["day0"] == t0]
+    here = {d["user_id"] for d in today}
+    days = []
+    for i in range(6, -1, -1):
+        d0 = t0 - i * 86400
+        ds = [d for d in week if d["day0"] == d0]
+        days.append({"date": fmt_dt(d0, "%Y-%m-%d"), "lessons": len(ds), "present": len(ds),
+                     "late": sum(1 for d in ds if d["late_min"]), "workday": is_workday(d0)})
+    ms = work_month()
+    ranking = sorted(({"id": u["id"], "full_name": u["full_name"], **ms[u["id"]]} for u in users if u["id"] in ms and ms[u["id"]]["late"]),
+                     key=lambda x: (-x["late"], -x["late_min"]))
+    sc = sched()
+    started = now() >= at(t0, sc["start"]) + sc["grace"] * 60
+    absent = [{"id": u["id"], "full_name": u["full_name"]} for u in staff
+              if u["registered"] and u["id"] not in here] if is_workday(t0) else []
+    return web.json_response({
+        "mode": "work", "schedule": sc, "workday_today": is_workday(t0), "work_started": started,
+        "teachers": len(users), "staff": len(staff),
+        "unregistered": sum(not u["registered"] for u in users),
+        "geo": geo_conf(),
+        "today": {"present": len(today), "late": sum(1 for d in today if d["late_min"]),
+                  "now_in": sum(1 for d in today if d["open"]), "left": sum(1 for d in today if d["out"]),
+                  "hours": round(sum(d["worked"] for d in today) / 3600, 1), "lessons": len(today), "forgot": 0},
+        "late_today": [d for d in sorted(today, key=lambda d: -d["late_min"]) if d["late_min"]],
+        "now_in": [d for d in today if d["open"]],
+        "today_list": today,
+        "absent_today": absent,
+        "days": days,
+        "ranking": ranking[:10],
+        "month_forgot": sum(v["forgot"] for v in ms.values()),
+        "admins": [{"id": a["id"], "full_name": a["full_name"], "username": a["username"], "is_owner": bool(a["is_owner"])}
+                   for a in users if a["is_admin"]],
+        "pending": q1("SELECT COUNT(*) c FROM users WHERE approved=0")["c"],
+    })
+
+
 async def api_stats(request):
+    if is_work():
+        return await api_work_stats(request)
     t0 = day_start()
     m0 = day_start(datetime.now(TZ).replace(day=1))
     teachers = q("SELECT * FROM users WHERE approved=1 ORDER BY full_name")
@@ -787,8 +1064,21 @@ async def api_lessons(request):
     if qy.get("status"):
         sql += " AND l.status=?"
         args.append(qy["status"])
-    rows = q(sql + " ORDER BY l.start_ts DESC LIMIT 300", *args)
-    return web.json_response({"lessons": [{**lesson_dict(r), "full_name": r["full_name"]} for r in rows]})
+    rows = q(sql + " ORDER BY l.start_ts DESC LIMIT 1000", *args)
+    if is_work():
+        names = {r["user_id"]: r["full_name"] for r in rows}
+        days = work_days(rows, names)
+        st = qy.get("wstate")
+        if st == "late":
+            days = [d for d in days if d["late_min"]]
+        elif st == "early":
+            days = [d for d in days if d["early_min"]]
+        elif st == "open":
+            days = [d for d in days if d["open"]]
+        elif st == "forgot":
+            days = [d for d in days if d["forgot"]]
+        return web.json_response({"mode": "work", "days": days[:400]})
+    return web.json_response({"lessons": [{**lesson_dict(r), "full_name": r["full_name"]} for r in rows[:300]]})
 
 
 async def api_lesson_update(request):
@@ -825,7 +1115,8 @@ async def api_teachers(request):
     qs = (request.query.get("q") or "").strip().lower()
     rows = q("SELECT * FROM users ORDER BY lower(full_name)")
     out = []
-    ms = all_month_stats()
+    ms = work_month() if is_work() else all_month_stats()
+    empty = EMPTY_WORK if is_work() else EMPTY_STATS
     in_lesson = {r["user_id"] for r in q("SELECT user_id FROM lessons WHERE status='open'")}
     for u in rows:
         if qs and qs not in (u["full_name"] or "").lower() and qs not in (u["username"] or "").lower() and qs != str(u["id"]):
@@ -833,7 +1124,7 @@ async def api_teachers(request):
         out.append({"id": u["id"], "full_name": u["full_name"], "username": u["username"], "is_admin": bool(u["is_admin"]),
                     "is_owner": bool(u["is_owner"]), "approved": bool(u["approved"]),
                     "registered": bool(u["registered"]), "in_lesson": u["id"] in in_lesson,
-                    "month": ms.get(u["id"], EMPTY_STATS)})
+                    "month": ms.get(u["id"], empty)})
     return web.json_response({"teachers": out})
 
 
@@ -842,12 +1133,15 @@ async def api_teacher(request):
     u = q1("SELECT * FROM users WHERE id=?", uid)
     if not u:
         return jerr("Topilmadi", 404)
-    hist = q("SELECT * FROM lessons WHERE user_id=? ORDER BY start_ts DESC LIMIT 60", uid)
+    hist = q("SELECT * FROM lessons WHERE user_id=? ORDER BY start_ts DESC LIMIT 120", uid)
+    extra = {}
+    if is_work():
+        extra = {"work_history": work_days(hist)[:45], "work_month": work_month(uid).get(uid, EMPTY_WORK)}
     return web.json_response({
         "id": u["id"], "full_name": u["full_name"], "username": u["username"], "is_admin": bool(u["is_admin"]),
         "is_owner": bool(u["is_owner"]), "approved": bool(u["approved"]), "joined_via": u["joined_via"],
         "registered": bool(u["registered"]), "joined": fmt_ts(u["created_at"]), "month": user_month_stats(uid),
-        "history": [lesson_dict(r) for r in hist],
+        "history": [lesson_dict(r) for r in hist[:60]], **extra,
     })
 
 
@@ -934,7 +1228,8 @@ async def api_group_delete(request):
 async def api_settings(request):
     g = geo_conf()
     return web.json_response({**g, "org_name": setting("org_name"), "max_hours": float(setting("max_hours")),
-                              "qr": qr_link(), "qr_version": int(setting("qr_version"))})
+                              "qr": qr_link(), "qr_version": int(setting("qr_version")),
+                              "mode": KIND(), "schedule": sched()})
 
 
 async def api_settings_save(request):
@@ -963,6 +1258,36 @@ async def api_settings_save(request):
         set_setting("max_hours", h)
     if "org_name" in b and clean(b["org_name"], 60):
         set_setting("org_name", clean(b["org_name"], 60))
+    if "mode" in b:
+        if b["mode"] not in ("work", "lesson"):
+            return jerr("Noto'g'ri rejim")
+        set_setting("mode", b["mode"])
+        set_mode_cache_dirty()
+    if "schedule" in b:
+        sc = b["schedule"]
+        tm = {}
+        for k in ("start", "lunch_start", "lunch_end", "end"):
+            v = str(sc.get(k, "")).strip()
+            try:
+                h, m = map(int, v.split(":"))
+                assert 0 <= h < 24 and 0 <= m < 60
+            except Exception:
+                return jerr("Vaqtni SS:DD ko'rinishida kiriting")
+            tm[k] = f"{h:02d}:{m:02d}"
+        if not (tm["start"] < tm["lunch_start"] <= tm["lunch_end"] < tm["end"]):
+            return jerr("Vaqtlar tartibi noto'g'ri: ish boshlanishi < tushlik < ish tugashi")
+        grace = int(sc.get("grace", 10))
+        if not 0 <= grace <= 120:
+            return jerr("Kechikish ruxsati 0–120 daqiqa bo'lishi kerak")
+        wdays = sorted({int(x) for x in sc.get("workdays", []) if 1 <= int(x) <= 7})
+        if not wdays:
+            return jerr("Kamida bitta ish kunini tanlang")
+        set_setting("work_start", tm["start"])
+        set_setting("lunch_start", tm["lunch_start"])
+        set_setting("lunch_end", tm["lunch_end"])
+        set_setting("work_end", tm["end"])
+        set_setting("grace", grace)
+        set_setting("workdays", ",".join(map(str, wdays)))
     return await api_settings(request)
 
 
@@ -979,9 +1304,9 @@ async def api_qr_send(request):
     png = base64.b64decode(data.split(",", 1)[1])
     if len(png) > 4_000_000:
         return jerr("Rasm juda katta")
+    who = "Hodimlar ishga kelganda va ishdan ketganda" if is_work() else "O'qituvchilar darsga kirganda va chiqqanda"
     await bot.send_document(request["user"]["id"], BufferedInputFile(png, filename="davomat_qr.png"),
-                            caption="🖨 Chop etib, o'qituvchilar xonasi yoki kirish joyiga osib qo'ying.\n"
-                                    "O'qituvchilar darsga kirganda va chiqqanda shu kodni skanerlaydi.")
+                            caption=f"🖨 Chop etib, kirish joyiga osib qo'ying.\n{who} shu kodni skanerlaydi.")
     return web.json_response({"ok": True, "message": "QR rasm botga yuborildi 📩"})
 
 
@@ -992,8 +1317,8 @@ async def api_report(request):
     parse_day(d_from), parse_day(d_to)
     n = await send_report(request["user"]["id"], d_from, d_to, opt_int(b.get("user_id")))
     if not n:
-        return jerr("Bu oraliqda darslar yo'q")
-    return web.json_response({"ok": True, "message": f"Hisobot ({n} ta dars) botga yuborildi 📩"})
+        return jerr("Bu oraliqda ma'lumot yo'q")
+    return web.json_response({"ok": True, "message": "Hisobot botga yuborildi 📩"})
 
 
 async def api_broadcast(request):
@@ -1023,17 +1348,25 @@ async def api_screen(request):
     now_in = q("SELECT l.*, u.full_name FROM lessons l JOIN users u ON u.id=l.user_id WHERE l.status='open' ORDER BY l.start_ts DESC")
     rows = q("SELECT l.*, u.full_name FROM lessons l JOIN users u ON u.id=l.user_id WHERE l.start_ts>=? OR l.end_ts>=?", t0, t0)
     events = []
+    work = is_work()
+    sc = sched()
     for r in rows:
         if r["start_ts"] >= t0:
-            events.append({"type": "in", "ts": r["start_ts"], "full_name": r["full_name"], "title": " · ".join(
-                x for x in (group_name(r["group_id"]), r["subject"]) if x)})
+            title = " · ".join(x for x in (group_name(r["group_id"]), r["subject"]) if x)
+            if work:
+                late = (r["start_ts"] - at(t0, sc["start"])) // 60
+                title = f"{late} daq kechikdi" if r["start_ts"] > at(t0, sc["start"]) + sc["grace"] * 60 and r["start_ts"] < at(t0, sc["lunch_start"]) else ""
+            events.append({"type": "in", "ts": r["start_ts"], "full_name": r["full_name"], "title": title})
         if r["end_ts"] and r["end_ts"] >= t0 and r["status"] == "done":
-            events.append({"type": "out", "ts": r["end_ts"], "full_name": r["full_name"], "title": dur_text(r["end_ts"] - r["start_ts"])})
+            secs = worked_seconds(r["start_ts"], r["end_ts"], day_start(datetime.fromtimestamp(r["start_ts"], TZ)), sc) \
+                if work else r["end_ts"] - r["start_ts"]
+            events.append({"type": "out", "ts": r["end_ts"], "full_name": r["full_name"], "title": dur_text(secs)})
     events.sort(key=lambda e: -e["ts"])
     for e in events:
         e["time"] = fmt_dt(e["ts"], "%H:%M")
     return web.json_response({
         "org": setting("org_name"), "qr": qr_link(), "server_time": now(), "geo": geo_conf()["configured"],
+        "mode": KIND(), "schedule": sc,
         "now_in": [{**lesson_dict(r), "full_name": r["full_name"]} for r in now_in],
         "today": {"lessons": len([r for r in rows if r["start_ts"] >= t0]), "teachers": len({r["user_id"] for r in rows if r["start_ts"] >= t0})},
         "events": events[:12],
