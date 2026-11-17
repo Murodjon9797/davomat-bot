@@ -176,6 +176,7 @@ DEFAULTS = {
     "mode": "work",
     "work_start": "08:00", "grace": "10", "lunch_start": "12:30", "lunch_end": "14:00", "work_end": "15:00",
     "workdays": "1,2,3,4,5,6",     # 1=dushanba ... 7=yakshanba
+    "work_from": "2026-11-18",     # hisob shu kundan boshlanadi (oldingi kunlar sinov — hisobotga kirmaydi)
 }
 
 
@@ -518,9 +519,23 @@ def worked_seconds(a: int, b: int, day0: int, sc: dict) -> int:
     return (b - a) - overlap
 
 
+def work_from0() -> int:
+    """Hisob boshlanadigan kun (00:00). Undan oldingi kunlar sinov hisoblanadi."""
+    try:
+        return parse_day(setting("work_from").strip())
+    except Exception:
+        return 0
+
+
+def counted(days: list[dict]) -> list[dict]:
+    """Faqat hisobga kiradigan (sinov bo'lmagan) kunlar."""
+    return [d for d in days if not d["trial"]]
+
+
 def work_days(rows, names: dict | None = None) -> list[dict]:
     """Yozuvlarni hodim+kun bo'yicha jamlaydi: keldi, ketdi, kechikish, erta ketish, ishlangan vaqt."""
     sc = sched()
+    wf = work_from0()
     groups: dict = {}
     for r in sorted(rows, key=lambda r: r["start_ts"]):
         d0 = day_start(datetime.fromtimestamp(r["start_ts"], TZ))
@@ -542,13 +557,16 @@ def work_days(rows, names: dict | None = None) -> list[dict]:
         start_ts, end_ts = at(d0, sc["start"]), at(d0, sc["end"])
         late = (first - start_ts) // 60 if first > start_ts + sc["grace"] * 60 else 0
         early = (end_ts - last_out) // 60 if last_out and last_out < end_ts - 60 else 0
+        trial = d0 < wf
+        if trial:
+            late = early = 0
         out.append({
             "user_id": uid, "full_name": (names or {}).get(uid), "date": fmt_dt(d0, "%Y-%m-%d"), "day0": d0,
             "in": fmt_dt(first, "%H:%M"), "in_ts": first, "out": fmt_dt(last_out, "%H:%M") if last_out else None,
             "open": is_open, "forgot": forgot and not is_open and not last_out,
             "worked": secs, "worked_text": dur_text(secs), "late_min": int(late), "early_min": int(early),
             "manual": any(r["manual"] for r in rs), "ids": [r["id"] for r in rs], "last_id": rs[-1]["id"],
-            "dist": rs[0]["start_dist"],
+            "dist": rs[0]["start_dist"], "trial": trial,
         })
     out.sort(key=lambda x: (-x["day0"], x["in_ts"]))
     return out
@@ -571,7 +589,7 @@ def work_month(uid: int | None = None) -> dict:
         sql += " AND user_id=?"
         args.append(uid)
     by: dict = {}
-    for d in work_days(q(sql, *args)):
+    for d in counted(work_days(q(sql, *args))):
         by.setdefault(d["user_id"], []).append(d)
     users = {r["id"]: r for r in q("SELECT id, created_at FROM users")}
     yday = day_start() - 86400
@@ -579,7 +597,7 @@ def work_month(uid: int | None = None) -> dict:
     for u_id in ([uid] if uid else list(by.keys())):
         ds = by.get(u_id, [])
         present = {d["day0"] for d in ds}
-        joined = day_start(datetime.fromtimestamp((users.get(u_id) or {"created_at": m0})["created_at"], TZ))
+        joined = max(work_from0(), day_start(datetime.fromtimestamp((users.get(u_id) or {"created_at": m0})["created_at"], TZ)))
         wdays = workdays_between(max(m0, joined), yday) if yday >= max(m0, joined) else []
         secs = sum(d["worked"] for d in ds)
         res[u_id] = {"days": len(ds), "late": sum(1 for d in ds if d["late_min"]), "late_min": sum(d["late_min"] for d in ds),
@@ -775,7 +793,7 @@ async def send_work_report(admin_id: int, d_from: str, d_to: str, user_id: int |
     users = q("SELECT * FROM users WHERE approved=1" + (" AND id=?" if user_id else " AND is_admin=0"),
               *([user_id] if user_id else []))
     names = {u["id"]: u["full_name"] for u in q("SELECT id, full_name FROM users")}
-    days = sorted(work_days(rows, names), key=lambda d: (d["day0"], d["full_name"] or ""))
+    days = sorted(counted(work_days(rows, names)), key=lambda d: (d["day0"], d["full_name"] or ""))
     if not days and not users:
         return 0
     sc = sched()
@@ -787,7 +805,7 @@ async def send_work_report(admin_id: int, d_from: str, d_to: str, user_id: int |
         det.append([i, fmt_dt(d["day0"], "%d.%m.%Y"), d["full_name"], d["in"], d["out"] or "", d["late_min"] or "",
                     d["early_min"] or "", round(d["worked"] / 3600, 2), state])
     last_day = min(parse_day(d_to), day_start())
-    wd = workdays_between(parse_day(d_from), last_day)
+    wd = workdays_between(max(parse_day(d_from), work_from0()), last_day)
     by: dict = {}
     for d in days:
         by.setdefault(d["user_id"], []).append(d)
@@ -924,6 +942,7 @@ async def api_me(request):
                 "workday_today": is_workday(t0)}
     return web.json_response({
         "mode": KIND(), "schedule": sched(), **work,
+        "trial_today": day_start() < work_from0(),
         "roster_size": roster_size(),
         "employee": (lambda e: {"id": e["id"], "full_name": e["full_name"], "position": e["position"] or ""} if e else None)(employee_of(u["id"])),
         "user": {"id": u["id"], "full_name": u["full_name"], "username": u["username"],
@@ -1058,9 +1077,10 @@ async def api_work_stats(request):
     sc = sched()
     started = now() >= at(t0, sc["start"]) + sc["grace"] * 60
     absent = [{"id": u["id"], "full_name": u["full_name"]} for u in staff
-              if u["registered"] and u["id"] not in here] if is_workday(t0) else []
+              if u["registered"] and u["id"] not in here] if is_workday(t0) and t0 >= work_from0() else []
     return web.json_response({
         "mode": "work", "schedule": sc, "workday_today": is_workday(t0), "work_started": started,
+        "work_from": setting("work_from"), "trial_today": t0 < work_from0(),
         "teachers": len(users), "staff": len(staff),
         "unregistered": sum(not u["registered"] for u in users),
         "geo": geo_conf(),

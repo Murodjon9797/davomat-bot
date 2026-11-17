@@ -826,6 +826,7 @@ async function workDayMenu(d) {
   }
 }
 function lateNowMin() {
+  if (ME.trial_today) return 0;
   const sc = ME.schedule, n = new Date(), [h, m] = sc.start.split(':').map(Number);
   const st = new Date(n); st.setHours(h, m, 0, 0);
   const diff = Math.floor((n - st) / 60000);
